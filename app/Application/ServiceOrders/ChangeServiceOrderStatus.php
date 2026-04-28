@@ -13,10 +13,10 @@ class ChangeServiceOrderStatus
         private readonly ServiceOrderRepository $serviceOrders,
     ) {}
 
-    public function handle(int $secretariatId, int $serviceOrderId, ServiceOrderStatus $status): ServiceOrder
+    public function handle(int $secretariatId, int $userId, int $serviceOrderId, ServiceOrderStatus $status): ServiceOrder
     {
         $serviceOrder = $this->getServiceOrder->handle($secretariatId, $serviceOrderId);
 
-        return $this->serviceOrders->changeStatus($serviceOrder, $status);
+        return $this->serviceOrders->changeStatus($serviceOrder, $userId, $status);
     }
 }

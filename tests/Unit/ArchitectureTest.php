@@ -175,7 +175,7 @@ class ArchitectureTest extends TestCase
         $this->assertFileContainsAll(
             $testFile,
             [
-                'test_service_order_status_transition_is_flexible',
+                'test_service_order_status_transitions_are_flexible',
                 'changeStatus(',
             ],
         );

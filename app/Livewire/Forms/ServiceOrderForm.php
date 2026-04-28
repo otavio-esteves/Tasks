@@ -3,7 +3,6 @@
 namespace App\Livewire\Forms;
 
 use App\Application\ServiceOrders\Data\UpdateServiceOrderData;
-use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Models\ServiceOrder;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -26,26 +25,20 @@ class ServiceOrderForm extends Form
 
     public string $observation = '';
 
+    #[Validate('required|string')]
     public string $currentStatus = 'pending';
 
     public string $newChecklistItem = '';
 
+    #[Validate([
+        'checklistItems.*.label' => 'nullable|string|max:255',
+        'checklistItems.*.is_completed' => 'boolean',
+    ])]
     public array $checklistItems = [];
 
     public array $originalChecklistItems = [];
 
     public array $historyItems = [];
-
-    protected function rules(): array
-    {
-        return [
-            'title' => 'required|min:3',
-            'categoryId' => 'required|integer',
-            'currentStatus' => 'required|string',
-            'checklistItems.*.label' => 'nullable|string|max:255',
-            'checklistItems.*.is_completed' => 'boolean',
-        ];
-    }
 
     public function setServiceOrder(ServiceOrder $ods): void
     {

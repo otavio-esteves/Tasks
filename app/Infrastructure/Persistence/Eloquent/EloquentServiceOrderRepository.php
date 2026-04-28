@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 class EloquentServiceOrderRepository implements ServiceOrderRepository
 {
-    public function createForSecretariat(int $secretariatId, CreateServiceOrderData $data): ServiceOrder
+    public function createForSecretariat(int $secretariatId, int $userId, CreateServiceOrderData $data): ServiceOrder
     {
-        return DB::transaction(function () use ($secretariatId, $data): ServiceOrder {
+        return DB::transaction(function () use ($secretariatId, $userId, $data): ServiceOrder {
             $serviceOrder = ServiceOrder::create([
                 ...$data->toPersistenceArray(),
                 'secretariat_id' => $secretariatId,
@@ -27,7 +27,7 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
 
             $serviceOrder->histories()->create([
                 'description' => 'Ordem de serviço criada.',
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
             ]);
 
             return $serviceOrder->fresh(['category', 'checklistItems', 'histories.user']);
@@ -43,15 +43,15 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
             ->first();
     }
 
-    public function update(ServiceOrder $serviceOrder, UpdateServiceOrderData $data): ServiceOrder
+    public function update(ServiceOrder $serviceOrder, int $userId, UpdateServiceOrderData $data): ServiceOrder
     {
-        return DB::transaction(function () use ($serviceOrder, $data): ServiceOrder {
+        return DB::transaction(function () use ($serviceOrder, $userId, $data): ServiceOrder {
             $original = $serviceOrder->getOriginal();
-            
+
             // Capture old checklist state as a simple list
-            $oldChecklist = $serviceOrder->checklistItems->map(fn($c) => [
-                'label' => $c->label, 
-                'is_completed' => (bool)$c->is_completed
+            $oldChecklist = $serviceOrder->checklistItems->map(fn ($c) => [
+                'label' => $c->label,
+                'is_completed' => (bool) $c->is_completed,
             ])->toArray();
 
             $serviceOrder->fill($data->toPersistenceArray());
@@ -88,32 +88,38 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
                 $metadata['due_date'] = ['from' => $old, 'to' => $new];
             }
             if (array_key_exists('is_urgent', $changes)) {
-                $old = !empty($original['is_urgent']) ? 'Urgente' : 'Normal';
-                $new = !empty($changes['is_urgent']) ? 'Urgente' : 'Normal';
+                $old = ! empty($original['is_urgent']) ? 'Urgente' : 'Normal';
+                $new = ! empty($changes['is_urgent']) ? 'Urgente' : 'Normal';
                 $logs[] = "Prioridade alterada de {$old} para {$new}.";
                 $metadata['is_urgent'] = ['from' => $old, 'to' => $new];
             }
             if (array_key_exists('observation', $changes)) {
-                $logs[] = "Observação atualizada.";
+                $logs[] = 'Observação atualizada.';
                 $metadata['observation'] = ['from' => $original['observation'] ?? '', 'to' => $changes['observation'] ?? ''];
             }
             if (array_key_exists('category_id', $changes)) {
-                $logs[] = "Categoria alterada.";
+                $logs[] = 'Categoria alterada.';
                 $metadata['category_id'] = ['from' => $original['category_id'] ?? '', 'to' => $changes['category_id'] ?? ''];
             }
-            
+
             // Improved Checklist Diff Logic
-            $newChecklistSimplified = array_map(fn($item) => [
-                'label' => $item['label'], 
-                'is_completed' => (bool)$item['is_completed']
+            $newChecklistSimplified = array_map(fn ($item) => [
+                'label' => $item['label'],
+                'is_completed' => (bool) $item['is_completed'],
             ], $newChecklist);
 
             if (json_encode($oldChecklist) !== json_encode($newChecklistSimplified)) {
                 $metadata['checklist'] = ['from' => $oldChecklist, 'to' => $newChecklistSimplified];
-                
+
                 // Track item occurrences to detect changes even with duplicate labels
-                $oldMap = []; foreach($oldChecklist as $item) $oldMap[$item['label']][] = $item['is_completed'];
-                $newMap = []; foreach($newChecklistSimplified as $item) $newMap[$item['label']][] = $item['is_completed'];
+                $oldMap = [];
+                foreach ($oldChecklist as $item) {
+                    $oldMap[$item['label']][] = $item['is_completed'];
+                }
+                $newMap = [];
+                foreach ($newChecklistSimplified as $item) {
+                    $newMap[$item['label']][] = $item['is_completed'];
+                }
 
                 $allLabels = array_unique(array_merge(array_keys($oldMap), array_keys($newMap)));
 
@@ -125,9 +131,13 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
                     $newCount = count($newStatusList);
 
                     if ($newCount > $oldCount) {
-                        for ($i = 0; $i < ($newCount - $oldCount); $i++) $logs[] = "Item '{$label}' adicionado ao checklist.";
+                        for ($i = 0; $i < ($newCount - $oldCount); $i++) {
+                            $logs[] = "Item '{$label}' adicionado ao checklist.";
+                        }
                     } elseif ($newCount < $oldCount) {
-                        for ($i = 0; $i < ($oldCount - $newCount); $i++) $logs[] = "Item '{$label}' removido do checklist.";
+                        for ($i = 0; $i < ($oldCount - $newCount); $i++) {
+                            $logs[] = "Item '{$label}' removido do checklist.";
+                        }
                     }
 
                     // For remaining items (intersection), check status changes
@@ -137,9 +147,13 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
                     $newCompleted = count(array_filter($newStatusList));
 
                     if ($newCompleted > $oldCompleted) {
-                        for ($i = 0; $i < ($newCompleted - $oldCompleted); $i++) $logs[] = "Item '{$label}' concluído.";
+                        for ($i = 0; $i < ($newCompleted - $oldCompleted); $i++) {
+                            $logs[] = "Item '{$label}' concluído.";
+                        }
                     } elseif ($newCompleted < $oldCompleted) {
-                        for ($i = 0; $i < ($oldCompleted - $newCompleted); $i++) $logs[] = "Item '{$label}' marcado como pendente.";
+                        for ($i = 0; $i < ($oldCompleted - $newCompleted); $i++) {
+                            $logs[] = "Item '{$label}' marcado como pendente.";
+                        }
                     }
                 }
             }
@@ -147,7 +161,7 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
             if ($logs !== []) {
                 $serviceOrder->histories()->create([
                     'description' => implode("\n", $logs),
-                    'user_id' => auth()->id(),
+                    'user_id' => $userId,
                     'metadata' => $metadata,
                 ]);
             }
@@ -156,14 +170,20 @@ class EloquentServiceOrderRepository implements ServiceOrderRepository
         });
     }
 
-    public function changeStatus(ServiceOrder $serviceOrder, ServiceOrderStatus $status): ServiceOrder
+    public function changeStatus(ServiceOrder $serviceOrder, int $userId, ServiceOrderStatus $status): ServiceOrder
     {
-        return DB::transaction(function () use ($serviceOrder, $status): ServiceOrder {
+        return DB::transaction(function () use ($serviceOrder, $userId, $status): ServiceOrder {
             $oldStatus = $serviceOrder->status;
             $serviceOrder->changeStatus($status);
             $serviceOrder->histories()->create([
                 'description' => "Status alterado de {$oldStatus->label()} para {$status->label()}.",
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
+                'metadata' => [
+                    'status' => [
+                        'from' => $oldStatus->value,
+                        'to' => $status->value,
+                    ],
+                ],
             ]);
 
             return $serviceOrder->fresh(['category', 'checklistItems', 'histories.user']);

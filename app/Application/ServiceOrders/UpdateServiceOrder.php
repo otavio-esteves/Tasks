@@ -15,12 +15,12 @@ class UpdateServiceOrder
         private readonly ServiceOrderRepository $serviceOrders,
     ) {}
 
-    public function handle(int $secretariatId, int $serviceOrderId, UpdateServiceOrderData $data): ServiceOrder
+    public function handle(int $secretariatId, int $userId, int $serviceOrderId, UpdateServiceOrderData $data): ServiceOrder
     {
         $this->ensureCategoryBelongsToSecretariat->handle($secretariatId, $data->categoryId);
 
         $serviceOrder = $this->getServiceOrder->handle($secretariatId, $serviceOrderId);
 
-        return $this->serviceOrders->update($serviceOrder, $data);
+        return $this->serviceOrders->update($serviceOrder, $userId, $data);
     }
 }

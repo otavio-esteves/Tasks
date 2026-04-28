@@ -10,12 +10,12 @@ use App\Application\ServiceOrders\DeleteServiceOrder;
 use App\Application\ServiceOrders\GetServiceOrder;
 use App\Application\ServiceOrders\UpdateServiceOrder;
 use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderCategory;
-use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderStatusTransition;
 use App\Domain\ServiceOrders\Exceptions\ServiceOrderNotFound;
 use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Models\Category;
 use App\Models\Secretariat;
 use App\Models\ServiceOrder;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,6 +25,7 @@ class ServiceOrderDomainTest extends TestCase
 
     public function test_service_order_code_is_generated_from_persisted_id(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
         $data = CreateServiceOrderData::fromArray([
@@ -36,8 +37,10 @@ class ServiceOrderDomainTest extends TestCase
             'observation' => null,
         ]);
 
-        $first = app(CreateServiceOrder::class)->handle($secretariat->id, $data);
-        $second = app(CreateServiceOrder::class)->handle($secretariat->id, CreateServiceOrderData::fromArray([
+        $this->actingAs($user);
+
+        $first = app(CreateServiceOrder::class)->handle($secretariat->id, $user->id, $data);
+        $second = app(CreateServiceOrder::class)->handle($secretariat->id, $user->id, CreateServiceOrderData::fromArray([
             'title' => 'ODS 2',
             'location' => 'Rua B',
             'category_id' => $category->id,
@@ -55,11 +58,15 @@ class ServiceOrderDomainTest extends TestCase
 
     public function test_service_order_can_be_created_with_checklist_items(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
 
+        $this->actingAs($user);
+
         $serviceOrder = app(CreateServiceOrder::class)->handle(
             $secretariat->id,
+            $user->id,
             CreateServiceOrderData::fromArray([
                 'title' => 'ODS com checklist',
                 'location' => 'Rua A',
@@ -91,6 +98,7 @@ class ServiceOrderDomainTest extends TestCase
 
     public function test_update_service_order_preserves_existing_status(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
         $serviceOrder = ServiceOrder::factory()
@@ -100,8 +108,11 @@ class ServiceOrderDomainTest extends TestCase
                 'status' => ServiceOrderStatus::InProgress,
             ]);
 
+        $this->actingAs($user);
+
         $updated = app(UpdateServiceOrder::class)->handle(
             $secretariat->id,
+            $user->id,
             $serviceOrder->id,
             UpdateServiceOrderData::fromArray([
                 'title' => 'Titulo atualizado',
@@ -122,6 +133,7 @@ class ServiceOrderDomainTest extends TestCase
 
     public function test_service_order_checklist_items_can_be_updated(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
         $serviceOrder = ServiceOrder::factory()
@@ -135,8 +147,11 @@ class ServiceOrderDomainTest extends TestCase
             ['label' => 'Item antigo 2', 'is_completed' => false, 'sort_order' => 1],
         ]);
 
+        $this->actingAs($user);
+
         $updated = app(UpdateServiceOrder::class)->handle(
             $secretariat->id,
+            $user->id,
             $serviceOrder->id,
             UpdateServiceOrderData::fromArray([
                 'title' => 'ODS atualizada',
@@ -169,6 +184,36 @@ class ServiceOrderDomainTest extends TestCase
             'is_completed' => false,
             'sort_order' => 1,
         ]);
+    }
+
+    public function test_empty_checklist_labels_are_ignored(): void
+    {
+        $user = User::factory()->create();
+        $secretariat = Secretariat::factory()->create();
+        $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
+
+        $this->actingAs($user);
+
+        $serviceOrder = app(CreateServiceOrder::class)->handle(
+            $secretariat->id,
+            $user->id,
+            CreateServiceOrderData::fromArray([
+                'title' => 'ODS com labels vazios',
+                'location' => 'Rua A',
+                'category_id' => $category->id,
+                'due_date' => null,
+                'is_urgent' => false,
+                'observation' => null,
+                'checklist_items' => [
+                    ['label' => '  ', 'is_completed' => false],
+                    ['label' => '', 'is_completed' => true],
+                    ['label' => 'Item Valido', 'is_completed' => false],
+                ],
+            ]),
+        );
+
+        $this->assertCount(1, $serviceOrder->checklistItems);
+        $this->assertSame('Item Valido', $serviceOrder->checklistItems[0]->label);
     }
 
     public function test_get_service_order_returns_scoped_record_with_checklist_items(): void
@@ -205,14 +250,18 @@ class ServiceOrderDomainTest extends TestCase
 
     public function test_create_service_order_use_case_rejects_category_from_other_secretariat(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $otherSecretariat = Secretariat::factory()->create();
         $foreignCategory = Category::factory()->create(['secretariat_id' => $otherSecretariat->id]);
+
+        $this->actingAs($user);
 
         $this->expectException(InvalidServiceOrderCategory::class);
 
         app(CreateServiceOrder::class)->handle(
             $secretariat->id,
+            $user->id,
             CreateServiceOrderData::fromArray([
                 'title' => 'ODS invalida',
                 'location' => 'Rua X',
@@ -286,7 +335,7 @@ class ServiceOrderDomainTest extends TestCase
         ], $data->toFormState());
     }
 
-    public function test_service_order_status_transition_is_flexible(): void
+    public function test_service_order_status_transitions_are_flexible(): void
     {
         $serviceOrder = ServiceOrder::factory()->create([
             'status' => ServiceOrderStatus::Pending,
@@ -294,23 +343,29 @@ class ServiceOrderDomainTest extends TestCase
 
         $serviceOrder->changeStatus(ServiceOrderStatus::InProgress);
         $serviceOrder->refresh();
-
         $this->assertSame(ServiceOrderStatus::InProgress, $serviceOrder->status);
+
+        $serviceOrder->changeStatus(ServiceOrderStatus::Pending);
+        $serviceOrder->refresh();
+        $this->assertSame(ServiceOrderStatus::Pending, $serviceOrder->status);
 
         $serviceOrder->changeStatus(ServiceOrderStatus::Completed);
         $serviceOrder->refresh();
-
         $this->assertSame(ServiceOrderStatus::Completed, $serviceOrder->status);
 
-        // Agora permitido voltar para pendente
+        // Now allowed to move back from Completed
+        $serviceOrder->changeStatus(ServiceOrderStatus::InProgress);
+        $serviceOrder->refresh();
+        $this->assertSame(ServiceOrderStatus::InProgress, $serviceOrder->status);
+
         $serviceOrder->changeStatus(ServiceOrderStatus::Pending);
         $serviceOrder->refresh();
-
         $this->assertSame(ServiceOrderStatus::Pending, $serviceOrder->status);
     }
 
     public function test_change_service_order_status_use_case_updates_scoped_record(): void
     {
+        $user = User::factory()->create();
         $secretariat = Secretariat::factory()->create();
         $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
         $serviceOrder = ServiceOrder::factory()->create([
@@ -319,8 +374,11 @@ class ServiceOrderDomainTest extends TestCase
             'status' => ServiceOrderStatus::Pending,
         ]);
 
+        $this->actingAs($user);
+
         $updated = app(ChangeServiceOrderStatus::class)->handle(
             $secretariat->id,
+            $user->id,
             $serviceOrder->id,
             ServiceOrderStatus::InProgress,
         );
@@ -330,5 +388,51 @@ class ServiceOrderDomainTest extends TestCase
             'id' => $serviceOrder->id,
             'status' => ServiceOrderStatus::InProgress->value,
         ]);
+
+        $this->assertDatabaseHas('ods_histories', [
+            'service_order_id' => $serviceOrder->id,
+            'user_id' => $user->id,
+        ]);
+
+        $history = $updated->histories()->first();
+        $this->assertSame('pending', $history->metadata['status']['from']);
+        $this->assertSame('in_progress', $history->metadata['status']['to']);
+    }
+
+    public function test_service_order_code_is_unique_even_with_soft_deletes(): void
+    {
+        $user = User::factory()->create();
+        $secretariat = Secretariat::factory()->create();
+        $category = Category::factory()->create(['secretariat_id' => $secretariat->id]);
+
+        $this->actingAs($user);
+
+        $ods1 = app(CreateServiceOrder::class)->handle($secretariat->id, $user->id, CreateServiceOrderData::fromArray([
+            'title' => 'ODS 1',
+            'location' => 'Rua A',
+            'category_id' => $category->id,
+            'due_date' => null,
+            'is_urgent' => false,
+            'observation' => null,
+        ]));
+
+        $code1 = $ods1->code;
+
+        // Soft delete ods1
+        $ods1->delete();
+
+        // Create ods2 - should have a different code because it will have a different ID
+        $ods2 = app(CreateServiceOrder::class)->handle($secretariat->id, $user->id, CreateServiceOrderData::fromArray([
+            'title' => 'ODS 2',
+            'location' => 'Rua B',
+            'category_id' => $category->id,
+            'due_date' => null,
+            'is_urgent' => false,
+            'observation' => null,
+        ]));
+
+        $this->assertNotSame($code1, $ods2->code);
+        $this->assertDatabaseHas('service_orders', ['code' => $code1]);
+        $this->assertDatabaseHas('service_orders', ['code' => $ods2->code]);
     }
 }

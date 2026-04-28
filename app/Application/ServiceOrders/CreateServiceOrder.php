@@ -14,10 +14,10 @@ class CreateServiceOrder
         private readonly ServiceOrderRepository $serviceOrders,
     ) {}
 
-    public function handle(int $secretariatId, CreateServiceOrderData $data): ServiceOrder
+    public function handle(int $secretariatId, int $userId, CreateServiceOrderData $data): ServiceOrder
     {
         $this->ensureCategoryBelongsToSecretariat->handle($secretariatId, $data->categoryId);
 
-        return $this->serviceOrders->createForSecretariat($secretariatId, $data);
+        return $this->serviceOrders->createForSecretariat($secretariatId, $userId, $data);
     }
 }

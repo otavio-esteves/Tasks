@@ -19,10 +19,14 @@ enum ServiceOrderStatus: string
 
     public function canTransitionTo(self $target): bool
     {
+        if ($this === $target) {
+            return true;
+        }
+
         return match ($this) {
-            self::Pending => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
-            self::InProgress => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
-            self::Completed => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
+            self::Pending => in_array($target, [self::InProgress, self::Completed], true),
+            self::InProgress => in_array($target, [self::Pending, self::Completed], true),
+            self::Completed => in_array($target, [self::Pending, self::InProgress], true),
         };
     }
 }

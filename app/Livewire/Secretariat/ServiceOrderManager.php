@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Secretariat;
 
+use App\Application\Categories\Data\CreateCategoryData;
+use App\Application\Categories\SaveCategory;
 use App\Application\ServiceOrders\ChangeServiceOrderStatus;
 use App\Application\ServiceOrders\CreateServiceOrder;
 use App\Application\ServiceOrders\Data\CreateServiceOrderData;
@@ -11,6 +13,7 @@ use App\Application\ServiceOrders\DeleteServiceOrder;
 use App\Application\ServiceOrders\GetServiceOrder;
 use App\Application\ServiceOrders\Queries\ListServiceOrders;
 use App\Application\ServiceOrders\UpdateServiceOrder;
+use App\Domain\Categories\Exceptions\CategorySlugAlreadyExists;
 use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderCategory;
 use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderStatusTransition;
 use App\Domain\ServiceOrders\Exceptions\ServiceOrderNotFound;
@@ -18,12 +21,14 @@ use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Livewire\Actions\Logout;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
 use App\Livewire\Forms\ServiceOrderForm;
+use App\Models\Category;
 use App\Models\Secretariat;
 use App\Models\ServiceOrder;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Throwable;
 
 class ServiceOrderManager extends Component
 {
@@ -98,19 +103,20 @@ class ServiceOrderManager extends Component
         }
     }
 
-    public function createNewCategory(\App\Application\Categories\SaveCategory $saveCategory): void
+    public function createNewCategory(SaveCategory $saveCategory): void
     {
-        $this->authorize('create', \App\Models\Category::class);
+        $this->authorize('create', Category::class);
 
         $name = trim($this->newCategoryName);
 
         if ($name === '') {
-            $this->addError('newCategoryName', 'O nome da categoria e obrigatorio.');
+            $this->addError('newCategoryName', 'O nome da categoria é obrigatório.');
+
             return;
         }
 
         try {
-            $data = \App\Application\Categories\Data\CreateCategoryData::fromArray([
+            $data = CreateCategoryData::fromArray([
                 'name' => $name,
                 'secretariat_id' => $this->secretariat->id,
             ]);
@@ -119,14 +125,14 @@ class ServiceOrderManager extends Component
 
             // Refresh categories list
             $this->secretariat->load('categories');
-            
+
             // Select the new category
             $this->form->categoryId = $category->id;
             $this->newCategoryName = '';
             $this->showCategoryModal = false;
-        } catch (\App\Domain\Categories\Exceptions\CategorySlugAlreadyExists $e) {
-            $this->addError('newCategoryName', 'Ja existe uma categoria com este nome.');
-        } catch (\Throwable $e) {
+        } catch (CategorySlugAlreadyExists $e) {
+            $this->addError('newCategoryName', 'Já existe uma categoria com este nome.');
+        } catch (Throwable $e) {
             $this->addError('newCategoryName', 'Erro ao criar categoria.');
         }
     }
@@ -173,8 +179,8 @@ class ServiceOrderManager extends Component
             $this->dispatch('ods-modal-closed');
         } catch (InvalidServiceOrderCategory|ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable) {
-            $this->flashFallback('Nao foi possivel salvar a checklist agora. Tente novamente.', 'error');
+        } catch (Throwable) {
+            $this->flashFallback('Não foi possível salvar a checklist agora. Tente novamente.', 'error');
         }
     }
 
@@ -207,7 +213,7 @@ class ServiceOrderManager extends Component
             $serviceOrder = $getServiceOrder->handle($this->secretariat->id, $id);
             $this->authorize('update', $serviceOrder);
 
-            $changeServiceOrderStatus->handle($this->secretariat->id, $id, ServiceOrderStatus::from($status));
+            $changeServiceOrderStatus->handle($this->secretariat->id, auth()->id(), $id, ServiceOrderStatus::from($status));
 
             if ((int) $this->form->odsId === $id) {
                 $this->edit($id, 'details', $getServiceOrder);
@@ -216,7 +222,7 @@ class ServiceOrderManager extends Component
             $this->dispatch('ods-status-updated');
         } catch (InvalidServiceOrderCategory|InvalidServiceOrderStatusTransition|ServiceOrderNotFound|\ValueError $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->flashFallback('Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
         }
     }
@@ -238,19 +244,19 @@ class ServiceOrderManager extends Component
                 $this->authorize('update', $serviceOrder);
 
                 $data = UpdateServiceOrderData::fromArray($this->form->formState());
-                $updateServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId, $data);
+                $updateServiceOrder->handle($this->secretariat->id, auth()->id(), (int) $this->form->odsId, $data);
             } else {
                 $this->authorize('create', [ServiceOrder::class, $this->secretariat]);
 
                 $data = CreateServiceOrderData::fromArray($this->form->formState());
-                $createServiceOrder->handle($this->secretariat->id, $data);
+                $createServiceOrder->handle($this->secretariat->id, auth()->id(), $data);
             }
 
             $this->resetForm();
             $this->dispatch('ods-saved');
         } catch (InvalidServiceOrderCategory|ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->flashFallback('Nao foi possivel salvar a ordem de servico agora. Tente novamente.', 'error');
         }
     }
@@ -267,7 +273,7 @@ class ServiceOrderManager extends Component
             $this->dispatch('open-ods-modal', mode: 'edit', view: $view);
         } catch (ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->flashFallback('Nao foi possivel carregar a ordem de servico.', 'error');
         }
     }
@@ -286,7 +292,7 @@ class ServiceOrderManager extends Component
             session()->flash('success', 'Ordem removida com sucesso!');
         } catch (ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->flashFallback('Nao foi possivel remover a ordem de servico agora.', 'error');
         }
     }
@@ -382,7 +388,7 @@ class ServiceOrderManager extends Component
             'checklist_items' => $this->form->checklistItems,
         ]);
 
-        $updated = $updateServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId, $data);
+        $updated = $updateServiceOrder->handle($this->secretariat->id, auth()->id(), (int) $this->form->odsId, $data);
 
         $toState = UpdateServiceOrderData::fromServiceOrder($updated)->toFormState();
         $this->form->checklistItems = $toState['checklistItems'];
