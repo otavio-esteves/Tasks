@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property ServiceOrderStatus $status
+ */
 class ServiceOrder extends Model
 {
     use HasFactory, SoftDeletes;
@@ -69,9 +72,20 @@ class ServiceOrder extends Model
         return $this->belongsTo(Category::class);
     }
 
+    /**
+     * @return HasMany<OdsChecklist, $this>
+     */
     public function checklistItems(): HasMany
     {
         return $this->hasMany(OdsChecklist::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<OdsHistory, $this>
+     */
+    public function histories(): HasMany
+    {
+        return $this->hasMany(OdsHistory::class)->orderBy('created_at', 'desc')->orderBy('id', 'desc');
     }
 
     public function scopeForSecretariat(Builder $query, int $secretariatId): Builder

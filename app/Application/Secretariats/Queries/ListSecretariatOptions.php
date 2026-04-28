@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Application\Secretariats;
+namespace App\Application\Secretariats\Queries;
 
 use App\Application\Secretariats\Contracts\SecretariatRepository;
 use Illuminate\Support\Collection;

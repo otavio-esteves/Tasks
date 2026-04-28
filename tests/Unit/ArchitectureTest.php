@@ -132,7 +132,7 @@ class ArchitectureTest extends TestCase
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/ListServiceOrders.php'),
+                'use_case' => app_path('Application/ServiceOrders/Queries/ListServiceOrders.php'),
                 'tests' => [
                     base_path('tests/Feature/Listings/ServiceOrderListingTest.php'),
                 ],
@@ -175,9 +175,8 @@ class ArchitectureTest extends TestCase
         $this->assertFileContainsAll(
             $testFile,
             [
-                'test_service_order_status_transition_is_explicit',
+                'test_service_order_status_transition_is_flexible',
                 'changeStatus(',
-                'InvalidServiceOrderStatusTransition::class',
             ],
         );
     }

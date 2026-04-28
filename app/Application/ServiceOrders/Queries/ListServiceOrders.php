@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Application\ServiceOrders;
+namespace App\Application\ServiceOrders\Queries;
 
 use App\Application\ServiceOrders\Contracts\ServiceOrderRepository;
 use App\Application\ServiceOrders\Data\ServiceOrderListResult;

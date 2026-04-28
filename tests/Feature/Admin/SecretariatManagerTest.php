@@ -24,8 +24,8 @@ class SecretariatManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SecretariatManager::class)
             ->call('create')
-            ->set('name', 'Nova Secretaria')
-            ->set('description', 'Descricao nova')
+            ->set('form.name', 'Nova Secretaria')
+            ->set('form.description', 'Descricao nova')
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -38,7 +38,7 @@ class SecretariatManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SecretariatManager::class)
             ->call('edit', $secretariat->id)
-            ->set('name', 'Secretaria Atualizada')
+            ->set('form.name', 'Secretaria Atualizada')
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -71,9 +71,9 @@ class SecretariatManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SecretariatManager::class)
             ->call('create')
-            ->set('name', 'Secretaria de Obras')
+            ->set('form.name', 'Secretaria de Obras')
             ->call('store')
-            ->assertHasErrors(['name'])
+            ->assertHasErrors(['form.name'])
             ->assertSee('Ja existe uma secretaria com este nome.');
     }
 }

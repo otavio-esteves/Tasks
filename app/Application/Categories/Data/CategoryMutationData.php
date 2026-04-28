@@ -2,6 +2,9 @@
 
 namespace App\Application\Categories\Data;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract readonly class CategoryMutationData
 {
     public function __construct(

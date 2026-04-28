@@ -27,9 +27,9 @@ class CategoryManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(CategoryManager::class)
             ->call('create')
-            ->set('name', 'Nova Categoria')
-            ->set('secretariat_id', $secretariat->id)
-            ->set('description', 'Descricao nova')
+            ->set('form.name', 'Nova Categoria')
+            ->set('form.secretariat_id', $secretariat->id)
+            ->set('form.description', 'Descricao nova')
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -43,8 +43,8 @@ class CategoryManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(CategoryManager::class)
             ->call('edit', $category->id)
-            ->set('name', 'Categoria Atualizada')
-            ->set('secretariat_id', $secretariat->id)
+            ->set('form.name', 'Categoria Atualizada')
+            ->set('form.secretariat_id', $secretariat->id)
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -79,10 +79,36 @@ class CategoryManagerTest extends TestCase
         Livewire::actingAs($admin)
             ->test(CategoryManager::class)
             ->call('create')
-            ->set('name', 'Iluminacao Publica')
-            ->set('secretariat_id', $secretariat->id)
+            ->set('form.name', 'Iluminacao Publica')
+            ->set('form.secretariat_id', $secretariat->id)
             ->call('store')
-            ->assertHasErrors(['name'])
+            ->assertHasErrors(['form.name'])
             ->assertSee('Este nome resulta em um slug ja existente em outra categoria.');
+    }
+
+    public function test_same_slug_is_allowed_in_different_secretariats(): void
+    {
+        $admin = User::factory()->create(['secretariat_id' => null]);
+        $sec1 = Secretariat::factory()->create();
+        $sec2 = Secretariat::factory()->create();
+
+        Category::factory()->create([
+            'secretariat_id' => $sec1->id,
+            'name' => 'Manutencao',
+            'slug' => 'manutencao',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(CategoryManager::class)
+            ->call('create')
+            ->set('form.name', 'Manutencao')
+            ->set('form.secretariat_id', $sec2->id)
+            ->call('store')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('categories', [
+            'name' => 'Manutencao',
+            'secretariat_id' => $sec2->id,
+        ]);
     }
 }

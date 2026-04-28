@@ -113,6 +113,6 @@ Critério prático:
 
 ## Limites atuais
 
-- Ainda não existe uma camada `Infrastructure` dedicada; Eloquent é usado diretamente onde isso ainda é suficiente.
-- Alguns documentos antigos do projeto descrevem roadmap futuro e podem divergir do estado atual do código.
-- O checklist de ODS continua como funcionalidade futura; não inventar comportamento enquanto a feature não existir.
+- A arquitetura segue uma separação clara onde `Application` depende de contratos e `Infrastructure` fornece a implementação Eloquent.
+- Alguns documentos antigos do projeto podem descrever roadmap futuro e divergir do estado atual do código; considere o código e o README como fontes de verdade.
+- O checklist de ODS está funcional para persistência básica; novas regras de validação do checklist podem ser adicionadas futuramente.

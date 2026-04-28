@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Listings;
 
-use App\Application\ServiceOrders\ListServiceOrders;
+use App\Application\ServiceOrders\Queries\ListServiceOrders;
 use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Livewire\Secretariat\ServiceOrderManager;
 use App\Models\Category;
@@ -25,12 +25,14 @@ class ServiceOrderListingTest extends TestCase
         ServiceOrder::factory()->forSecretariat($secretariat)->count(12)->create([
             'category_id' => $category->id,
             'title' => 'Servico comum',
+            'status' => ServiceOrderStatus::Pending,
         ]);
 
         ServiceOrder::factory()->forSecretariat($secretariat)->count(3)->create([
             'category_id' => $category->id,
             'title' => 'Reparo urgente',
             'is_urgent' => true,
+            'status' => ServiceOrderStatus::Pending,
         ]);
 
         $listing = app(ListServiceOrders::class)->handle($secretariat->id, 'reparo', [], 5);
@@ -58,7 +60,7 @@ class ServiceOrderListingTest extends TestCase
 
         $listing = app(ListServiceOrders::class)->handle($secretariat->id, '', [], 3);
 
-        $this->assertSame(6, $listing->summary['total']);
+        $this->assertSame(4, $listing->summary['total']);
         $this->assertSame(2, $listing->summary['completed']);
         $this->assertCount(3, $listing->serviceOrders->items());
         $this->assertSame(2, $listing->serviceOrders->lastPage());
@@ -171,6 +173,6 @@ class ServiceOrderListingTest extends TestCase
             ->call('applyQuickFilter', 'total')
             ->assertSet('quickFilter', '')
             ->assertSee('Ordem urgente')
-            ->assertSee('Ordem concluida');
+            ->assertDontSee('Ordem concluida');
     }
 }

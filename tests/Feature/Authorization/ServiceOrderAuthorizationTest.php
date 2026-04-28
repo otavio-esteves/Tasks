@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Authorization;
 
+use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Livewire\Secretariat\ServiceOrderManager;
 use App\Models\Category;
 use App\Models\Secretariat;
@@ -42,9 +43,9 @@ class ServiceOrderAuthorizationTest extends TestCase
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $secretariat])
             ->call('edit', $serviceOrder->id)
-            ->assertSet('odsId', $serviceOrder->id)
-            ->set('title', 'ODS atualizada')
-            ->set('categoryId', $category->id)
+            ->assertSet('form.odsId', $serviceOrder->id)
+            ->set('form.title', 'ODS atualizada')
+            ->set('form.categoryId', $category->id)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -85,8 +86,8 @@ class ServiceOrderAuthorizationTest extends TestCase
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $secretariat])
             ->call('edit', $serviceOrder->id, 'checklist')
-            ->set('title', 'Titulo nao salvo')
-            ->set('newChecklistItem', 'Nova etapa automatica')
+            ->set('form.title', 'Titulo nao salvo')
+            ->set('form.newChecklistItem', 'Nova etapa automatica')
             ->call('closeModal')
             ->assertHasNoErrors();
 
@@ -118,8 +119,8 @@ class ServiceOrderAuthorizationTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $ownSecretariat])
-            ->set('title', 'Nova ODS')
-            ->set('categoryId', $otherCategory->id)
+            ->set('form.title', 'Nova ODS')
+            ->set('form.categoryId', $otherCategory->id)
             ->call('save')
             ->assertSee('A categoria selecionada nao pertence a esta secretaria.');
 
@@ -130,14 +131,38 @@ class ServiceOrderAuthorizationTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $ownSecretariat])
-            ->set('title', 'ODS valida')
-            ->set('categoryId', $ownCategory->id)
+            ->set('form.title', 'ODS valida')
+            ->set('form.categoryId', $ownCategory->id)
             ->call('save')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('service_orders', [
             'title' => 'ODS valida',
             'secretariat_id' => $ownSecretariat->id,
+            'category_id' => $ownCategory->id,
+        ]);
+    }
+
+    public function test_secretariat_user_cannot_update_service_order_with_category_from_other_secretariat(): void
+    {
+        $ownSecretariat = Secretariat::factory()->create();
+        $otherSecretariat = Secretariat::factory()->create();
+        $ownCategory = Category::factory()->create(['secretariat_id' => $ownSecretariat->id]);
+        $otherCategory = Category::factory()->create(['secretariat_id' => $otherSecretariat->id]);
+        $user = User::factory()->create(['secretariat_id' => $ownSecretariat->id]);
+        $serviceOrder = ServiceOrder::factory()->forSecretariat($ownSecretariat)->create([
+            'category_id' => $ownCategory->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ServiceOrderManager::class, ['secretariat' => $ownSecretariat])
+            ->call('edit', $serviceOrder->id)
+            ->set('form.categoryId', $otherCategory->id)
+            ->call('save')
+            ->assertSee('A categoria selecionada nao pertence a esta secretaria.');
+
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $serviceOrder->id,
             'category_id' => $ownCategory->id,
         ]);
     }
@@ -184,9 +209,9 @@ class ServiceOrderAuthorizationTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $ownSecretariat])
-            ->set('odsId', $serviceOrder->id)
-            ->set('title', 'Tentativa de invasao')
-            ->set('categoryId', $ownCategory->id)
+            ->set('form.odsId', $serviceOrder->id)
+            ->set('form.title', 'Tentativa de invasao')
+            ->set('form.categoryId', $ownCategory->id)
             ->call('save')
             ->assertSee('Ordem de servico nao encontrada para esta secretaria.');
 
@@ -205,17 +230,17 @@ class ServiceOrderAuthorizationTest extends TestCase
         $serviceOrder = ServiceOrder::factory()->create([
             'secretariat_id' => $secretariat->id,
             'category_id' => $category->id,
-            'status' => \App\Domain\ServiceOrders\ServiceOrderStatus::Pending,
+            'status' => ServiceOrderStatus::Pending,
         ]);
 
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $secretariat])
-            ->call('updateStatus', $serviceOrder->id, \App\Domain\ServiceOrders\ServiceOrderStatus::InProgress->value)
+            ->call('updateStatus', $serviceOrder->id, ServiceOrderStatus::InProgress->value)
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('service_orders', [
             'id' => $serviceOrder->id,
-            'status' => \App\Domain\ServiceOrders\ServiceOrderStatus::InProgress->value,
+            'status' => ServiceOrderStatus::InProgress->value,
         ]);
     }
 
@@ -225,18 +250,18 @@ class ServiceOrderAuthorizationTest extends TestCase
         $otherSecretariat = Secretariat::factory()->create();
         $user = User::factory()->create(['secretariat_id' => $ownSecretariat->id]);
         $serviceOrder = ServiceOrder::factory()->forSecretariat($otherSecretariat)->create([
-            'status' => \App\Domain\ServiceOrders\ServiceOrderStatus::Pending,
+            'status' => ServiceOrderStatus::Pending,
         ]);
 
         Livewire::actingAs($user)
             ->test(ServiceOrderManager::class, ['secretariat' => $ownSecretariat])
-            ->call('updateStatus', $serviceOrder->id, \App\Domain\ServiceOrders\ServiceOrderStatus::Completed->value)
+            ->call('updateStatus', $serviceOrder->id, ServiceOrderStatus::Completed->value)
             ->assertSee('Ordem de servico nao encontrada para esta secretaria.');
 
         $this->assertDatabaseHas('service_orders', [
             'id' => $serviceOrder->id,
             'secretariat_id' => $otherSecretariat->id,
-            'status' => \App\Domain\ServiceOrders\ServiceOrderStatus::Pending->value,
+            'status' => ServiceOrderStatus::Pending->value,
         ]);
     }
 
@@ -253,8 +278,8 @@ class ServiceOrderAuthorizationTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ServiceOrderManager::class, ['secretariat' => $secretariat])
-            ->set('title', 'ODS do admin')
-            ->set('categoryId', $category->id)
+            ->set('form.title', 'ODS do admin')
+            ->set('form.categoryId', $category->id)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -267,9 +292,9 @@ class ServiceOrderAuthorizationTest extends TestCase
         Livewire::actingAs($admin)
             ->test(ServiceOrderManager::class, ['secretariat' => $secretariat])
             ->call('edit', $serviceOrder->id)
-            ->assertSet('odsId', $serviceOrder->id)
-            ->set('title', 'ODS editada pelo admin')
-            ->set('categoryId', $category->id)
+            ->assertSet('form.odsId', $serviceOrder->id)
+            ->set('form.title', 'ODS editada pelo admin')
+            ->set('form.categoryId', $category->id)
             ->call('save')
             ->assertHasNoErrors();
 

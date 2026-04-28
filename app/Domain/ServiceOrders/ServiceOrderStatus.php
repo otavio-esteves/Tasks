@@ -12,8 +12,8 @@ enum ServiceOrderStatus: string
     {
         return match ($this) {
             self::Pending => 'Pendente',
-            self::InProgress => 'Em And.',
-            self::Completed => 'Concluida',
+            self::InProgress => 'Em andamento',
+            self::Completed => 'Concluído',
         };
     }
 
@@ -21,8 +21,8 @@ enum ServiceOrderStatus: string
     {
         return match ($this) {
             self::Pending => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
-            self::InProgress => in_array($target, [self::InProgress, self::Completed], true),
-            self::Completed => $target === self::Completed,
+            self::InProgress => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
+            self::Completed => in_array($target, [self::Pending, self::InProgress, self::Completed], true),
         };
     }
 }

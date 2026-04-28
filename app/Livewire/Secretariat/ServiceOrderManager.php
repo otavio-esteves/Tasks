@@ -9,7 +9,7 @@ use App\Application\ServiceOrders\Data\ServiceOrderListResult;
 use App\Application\ServiceOrders\Data\UpdateServiceOrderData;
 use App\Application\ServiceOrders\DeleteServiceOrder;
 use App\Application\ServiceOrders\GetServiceOrder;
-use App\Application\ServiceOrders\ListServiceOrders;
+use App\Application\ServiceOrders\Queries\ListServiceOrders;
 use App\Application\ServiceOrders\UpdateServiceOrder;
 use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderCategory;
 use App\Domain\ServiceOrders\Exceptions\InvalidServiceOrderStatusTransition;
@@ -17,10 +17,11 @@ use App\Domain\ServiceOrders\Exceptions\ServiceOrderNotFound;
 use App\Domain\ServiceOrders\ServiceOrderStatus;
 use App\Livewire\Actions\Logout;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
+use App\Livewire\Forms\ServiceOrderForm;
 use App\Models\Secretariat;
 use App\Models\ServiceOrder;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -30,38 +31,21 @@ class ServiceOrderManager extends Component
 
     public Secretariat $secretariat;
 
-    public $search = '';
+    public ServiceOrderForm $form;
 
-    public $filterCategoryId = '';
+    public string $search = '';
 
-    public $filterStatus = '';
+    public string $filterCategoryId = '';
 
-    public $filterUrgent = '';
+    public string $filterStatus = '';
 
-    public $quickFilter = '';
+    public string $filterUrgent = '';
 
-    // Propriedades do formulário
-    public $odsId = null;
+    public string $quickFilter = '';
 
-    public $title = '';
+    public string $newCategoryName = '';
 
-    public $location = '';
-
-    public $categoryId = '';
-
-    public $dueDate = '';
-
-    public $isUrgent = false;
-
-    public $observation = '';
-
-    public $currentStatus = '';
-
-    public $newChecklistItem = '';
-
-    public array $checklistItems = [];
-
-    public array $originalChecklistItems = [];
+    public bool $showCategoryModal = false;
 
     public function mount(Secretariat $secretariat): void
     {
@@ -93,45 +77,103 @@ class ServiceOrderManager extends Component
         $this->resetPage();
     }
 
-    public function addChecklistItem(): void
+    public function updated($property, $value): void
     {
-        $label = trim((string) $this->newChecklistItem);
+        if ($property === 'form.categoryId' && $value === 'new') {
+            $this->openCategoryModal();
+        }
+    }
 
-        if ($label === '') {
+    public function openCategoryModal(): void
+    {
+        $this->newCategoryName = '';
+        $this->showCategoryModal = true;
+    }
+
+    public function closeCategoryModal(): void
+    {
+        $this->showCategoryModal = false;
+        if ($this->form->categoryId === 'new') {
+            $this->form->categoryId = '';
+        }
+    }
+
+    public function createNewCategory(\App\Application\Categories\SaveCategory $saveCategory): void
+    {
+        $this->authorize('create', \App\Models\Category::class);
+
+        $name = trim($this->newCategoryName);
+
+        if ($name === '') {
+            $this->addError('newCategoryName', 'O nome da categoria e obrigatorio.');
             return;
         }
 
-        $this->checklistItems[] = [
-            'label' => $label,
-            'is_completed' => false,
-        ];
-
-        $this->newChecklistItem = '';
-    }
-
-    public function removeChecklistItem(int $index): void
-    {
-        unset($this->checklistItems[$index]);
-        $this->checklistItems = array_values($this->checklistItems);
-    }
-
-    public function closeModal(): void
-    {
         try {
-            if (trim((string) $this->newChecklistItem) !== '') {
-                $this->addChecklistItem();
+            $data = \App\Application\Categories\Data\CreateCategoryData::fromArray([
+                'name' => $name,
+                'secretariat_id' => $this->secretariat->id,
+            ]);
+
+            $category = $saveCategory->handle(null, $data);
+
+            // Refresh categories list
+            $this->secretariat->load('categories');
+            
+            // Select the new category
+            $this->form->categoryId = $category->id;
+            $this->newCategoryName = '';
+            $this->showCategoryModal = false;
+        } catch (\App\Domain\Categories\Exceptions\CategorySlugAlreadyExists $e) {
+            $this->addError('newCategoryName', 'Ja existe uma categoria com este nome.');
+        } catch (\Throwable $e) {
+            $this->addError('newCategoryName', 'Erro ao criar categoria.');
+        }
+    }
+
+    public function addChecklistItem(?GetServiceOrder $getServiceOrder = null, ?UpdateServiceOrder $updateServiceOrder = null): void
+    {
+        $this->form->addChecklistItem();
+
+        if ($this->form->odsId) {
+            $this->persistChecklistChanges(
+                $getServiceOrder ?? app(GetServiceOrder::class),
+                $updateServiceOrder ?? app(UpdateServiceOrder::class)
+            );
+        }
+    }
+
+    public function removeChecklistItem(int $index, ?GetServiceOrder $getServiceOrder = null, ?UpdateServiceOrder $updateServiceOrder = null): void
+    {
+        $this->form->removeChecklistItem($index);
+
+        if ($this->form->odsId) {
+            $this->persistChecklistChanges(
+                $getServiceOrder ?? app(GetServiceOrder::class),
+                $updateServiceOrder ?? app(UpdateServiceOrder::class)
+            );
+        }
+    }
+
+    public function closeModal(?GetServiceOrder $getServiceOrder = null, ?UpdateServiceOrder $updateServiceOrder = null): void
+    {
+        $getServiceOrder = $getServiceOrder ?? app(GetServiceOrder::class);
+        $updateServiceOrder = $updateServiceOrder ?? app(UpdateServiceOrder::class);
+
+        try {
+            if (trim((string) $this->form->newChecklistItem) !== '') {
+                $this->form->addChecklistItem();
             }
 
-            if ($this->shouldPersistChecklistOnClose()) {
-                $this->persistChecklistChanges();
+            if ($this->form->shouldPersistChecklistOnClose()) {
+                $this->persistChecklistChanges($getServiceOrder, $updateServiceOrder);
             }
 
             $this->resetForm();
             $this->dispatch('ods-modal-closed');
         } catch (InvalidServiceOrderCategory|ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable $e) {
-            Log::error('Erro ao fechar modal da ODS: '.$e->getMessage());
+        } catch (\Throwable) {
             $this->flashFallback('Nao foi possivel salvar a checklist agora. Tente novamente.', 'error');
         }
     }
@@ -143,104 +185,115 @@ class ServiceOrderManager extends Component
         $this->redirect('/', navigate: true);
     }
 
-    public function updateStatus(int $id, string $status): void
+    public function selectStatus(string $status): void
     {
+        if ($this->form->odsId) {
+            $this->updateStatus((int) $this->form->odsId, $status);
+        } else {
+            $this->form->currentStatus = $status;
+        }
+    }
+
+    public function updateStatus(
+        int $id,
+        string $status,
+        ?GetServiceOrder $getServiceOrder = null,
+        ?ChangeServiceOrderStatus $changeServiceOrderStatus = null
+    ): void {
+        $getServiceOrder = $getServiceOrder ?? app(GetServiceOrder::class);
+        $changeServiceOrderStatus = $changeServiceOrderStatus ?? app(ChangeServiceOrderStatus::class);
+
         try {
-            $serviceOrder = $this->findServiceOrderForCurrentSecretariat($id);
+            $serviceOrder = $getServiceOrder->handle($this->secretariat->id, $id);
             $this->authorize('update', $serviceOrder);
 
-            $targetStatus = ServiceOrderStatus::from($status);
+            $changeServiceOrderStatus->handle($this->secretariat->id, $id, ServiceOrderStatus::from($status));
 
-            app(ChangeServiceOrderStatus::class)->handle($this->secretariat->id, $id, $targetStatus);
-
-            if ((int) $this->odsId === $id) {
-                $this->edit($id, 'details');
+            if ((int) $this->form->odsId === $id) {
+                $this->edit($id, 'details', $getServiceOrder);
             }
 
-            session()->flash('success', 'Status da ordem atualizado com sucesso!');
+            $this->dispatch('ods-status-updated');
         } catch (InvalidServiceOrderCategory|InvalidServiceOrderStatusTransition|ServiceOrderNotFound|\ValueError $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable $e) {
-            Log::error('Erro ao atualizar status da ODS: '.$e->getMessage());
+        } catch (\Throwable) {
             $this->flashFallback('Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
         }
     }
 
-    public function save(): void
-    {
-        Log::info('Tentando salvar ODS...', ['title' => $this->title, 'cat' => $this->categoryId]);
+    public function save(
+        ?GetServiceOrder $getServiceOrder = null,
+        ?CreateServiceOrder $createServiceOrder = null,
+        ?UpdateServiceOrder $updateServiceOrder = null
+    ): void {
+        $getServiceOrder = $getServiceOrder ?? app(GetServiceOrder::class);
+        $createServiceOrder = $createServiceOrder ?? app(CreateServiceOrder::class);
+        $updateServiceOrder = $updateServiceOrder ?? app(UpdateServiceOrder::class);
 
-        $this->validate([
-            'title' => 'required|min:3',
-            'categoryId' => 'required|integer',
-            'checklistItems.*.label' => 'nullable|string|max:255',
-            'checklistItems.*.is_completed' => 'boolean',
-        ]);
+        $this->form->validate();
 
         try {
-            if ($this->odsId) {
-                $data = UpdateServiceOrderData::fromArray($this->formState());
-                $serviceOrder = $this->findServiceOrderForCurrentSecretariat((int) $this->odsId);
+            if ($this->form->odsId) {
+                $serviceOrder = $getServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId);
                 $this->authorize('update', $serviceOrder);
-                app(UpdateServiceOrder::class)->handle($this->secretariat->id, (int) $this->odsId, $data);
-                session()->flash('success', 'Ordem atualizada com sucesso!');
+
+                $data = UpdateServiceOrderData::fromArray($this->form->formState());
+                $updateServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId, $data);
             } else {
-                $data = CreateServiceOrderData::fromArray($this->formState());
                 $this->authorize('create', [ServiceOrder::class, $this->secretariat]);
-                app(CreateServiceOrder::class)->handle($this->secretariat->id, $data);
-                session()->flash('success', 'Ordem criada com sucesso!');
+
+                $data = CreateServiceOrderData::fromArray($this->form->formState());
+                $createServiceOrder->handle($this->secretariat->id, $data);
             }
 
-            Log::info('ODS salva com sucesso.');
-
             $this->resetForm();
-            $this->dispatch('ods-saved'); // Fecha o modal via Alpine
-
+            $this->dispatch('ods-saved');
         } catch (InvalidServiceOrderCategory|ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (\Throwable $e) {
-            Log::error('Erro ao salvar ODS: '.$e->getMessage());
+        } catch (\Throwable) {
             $this->flashFallback('Nao foi possivel salvar a ordem de servico agora. Tente novamente.', 'error');
         }
     }
 
-    public function edit($id, string $view = 'details'): void
+    public function edit(int $id, string $view = 'details', ?GetServiceOrder $getServiceOrder = null): void
     {
+        $getServiceOrder = $getServiceOrder ?? app(GetServiceOrder::class);
+
         try {
-            $ods = $this->findServiceOrderForCurrentSecretariat((int) $id);
+            $ods = $getServiceOrder->handle($this->secretariat->id, $id);
             $this->authorize('update', $ods);
+
+            $this->form->setServiceOrder($ods);
+            $this->dispatch('open-ods-modal', mode: 'edit', view: $view);
         } catch (ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
-
-            return;
+        } catch (\Throwable) {
+            $this->flashFallback('Nao foi possivel carregar a ordem de servico.', 'error');
         }
-
-        $this->fill([
-            'odsId' => $ods->id,
-            ...UpdateServiceOrderData::fromServiceOrder($ods)->toFormState(),
-        ]);
-        $this->currentStatus = $ods->status->value;
-        $this->originalChecklistItems = $this->normalizeChecklistItemsForComparison($this->checklistItems);
-        $this->dispatch('open-ods-modal', mode: 'edit', view: $view);
     }
 
-    public function delete($id): void
+    public function delete(int $id, ?GetServiceOrder $getServiceOrder = null, ?DeleteServiceOrder $deleteServiceOrder = null): void
     {
+        $getServiceOrder = $getServiceOrder ?? app(GetServiceOrder::class);
+        $deleteServiceOrder = $deleteServiceOrder ?? app(DeleteServiceOrder::class);
+
         try {
-            $serviceOrder = $this->findServiceOrderForCurrentSecretariat((int) $id);
+            $serviceOrder = $getServiceOrder->handle($this->secretariat->id, $id);
             $this->authorize('delete', $serviceOrder);
-            app(DeleteServiceOrder::class)->handle($this->secretariat->id, (int) $id);
+
+            $deleteServiceOrder->handle($this->secretariat->id, $id);
 
             session()->flash('success', 'Ordem removida com sucesso!');
         } catch (ServiceOrderNotFound $e) {
             $this->flashException($e, 'error');
+        } catch (\Throwable) {
+            $this->flashFallback('Nao foi possivel remover a ordem de servico agora.', 'error');
         }
     }
 
     public function resetForm(): void
     {
-        $this->reset(['odsId', 'title', 'location', 'categoryId', 'dueDate', 'isUrgent', 'observation', 'currentStatus', 'newChecklistItem', 'checklistItems', 'originalChecklistItems']);
-        $this->resetValidation();
+        $this->form->reset();
     }
 
     public function clearFilters(): void
@@ -258,11 +311,12 @@ class ServiceOrderManager extends Component
         $this->resetPage();
     }
 
-    public function render()
+    public function render(ListServiceOrders $listServiceOrders)
     {
         $this->authorize('viewAny', [ServiceOrder::class, $this->secretariat]);
+
         /** @var ServiceOrderListResult $listing */
-        $listing = app(ListServiceOrders::class)->handle($this->secretariat->id, $this->search, $this->listFilters(), 15);
+        $listing = $listServiceOrders->handle($this->secretariat->id, $this->search, $this->listFilters(), 15);
 
         return view('livewire.secretariat.service-order-manager', [
             'serviceOrders' => $listing->serviceOrders,
@@ -270,35 +324,6 @@ class ServiceOrderManager extends Component
             'categories' => $this->secretariat->categories,
             'statusOptions' => ServiceOrderStatus::cases(),
         ])->layout('layouts.app');
-    }
-
-    /**
-     * @return array{
-     *     title:string,
-     *     location:string,
-     *     category_id:int|string,
-     *     due_date:string,
-     *     is_urgent:bool,
-     *     observation:string,
-     *     checklist_items:list<array{label?:string|null,is_completed?:bool}>
-     * }
-     */
-    private function formState(): array
-    {
-        return [
-            'title' => $this->title,
-            'location' => $this->location,
-            'category_id' => $this->categoryId,
-            'due_date' => $this->dueDate,
-            'is_urgent' => (bool) $this->isUrgent,
-            'observation' => $this->observation,
-            'checklist_items' => $this->checklistItems,
-        ];
-    }
-
-    private function findServiceOrderForCurrentSecretariat(int $id): ServiceOrder
-    {
-        return app(GetServiceOrder::class)->handle($this->secretariat->id, $id);
     }
 
     /**
@@ -327,57 +352,41 @@ class ServiceOrderManager extends Component
         return $filters;
     }
 
-    private function shouldPersistChecklistOnClose(): bool
+    public function toggleChecklistItem(int $index, ?GetServiceOrder $getServiceOrder = null, ?UpdateServiceOrder $updateServiceOrder = null): void
     {
-        if (! $this->odsId) {
-            return false;
-        }
+        $this->form->checklistItems[$index]['is_completed'] = ! ($this->form->checklistItems[$index]['is_completed'] ?? false);
 
-        return $this->normalizeChecklistItemsForComparison($this->checklistItems) !== $this->originalChecklistItems;
+        if ($this->form->odsId) {
+            $this->persistChecklistChanges(
+                $getServiceOrder ?? app(GetServiceOrder::class),
+                $updateServiceOrder ?? app(UpdateServiceOrder::class)
+            );
+        }
     }
 
-    private function persistChecklistChanges(): void
+    private function persistChecklistChanges(GetServiceOrder $getServiceOrder, UpdateServiceOrder $updateServiceOrder): void
     {
-        $serviceOrder = $this->findServiceOrderForCurrentSecretariat((int) $this->odsId);
+        $serviceOrder = $getServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId);
         $this->authorize('update', $serviceOrder);
+
+        /** @var Carbon|null $dueDate */
+        $dueDate = $serviceOrder->due_date;
 
         $data = UpdateServiceOrderData::fromArray([
             'title' => $serviceOrder->title,
             'location' => $serviceOrder->location ?? '',
             'category_id' => $serviceOrder->category_id,
-            'due_date' => $serviceOrder->due_date?->format('Y-m-d') ?? '',
+            'due_date' => $dueDate?->format('Y-m-d') ?? '',
             'is_urgent' => (bool) $serviceOrder->is_urgent,
             'observation' => $serviceOrder->observation ?? '',
-            'checklist_items' => $this->checklistItems,
+            'checklist_items' => $this->form->checklistItems,
         ]);
 
-        $updated = app(UpdateServiceOrder::class)->handle($this->secretariat->id, (int) $this->odsId, $data);
+        $updated = $updateServiceOrder->handle($this->secretariat->id, (int) $this->form->odsId, $data);
 
-        $this->checklistItems = UpdateServiceOrderData::fromServiceOrder($updated)->toFormState()['checklistItems'];
-        $this->originalChecklistItems = $this->normalizeChecklistItemsForComparison($this->checklistItems);
-    }
-
-    /**
-     * @param  array<int, array{label?:string|null,is_completed?:bool}>  $items
-     * @return list<array{label:string,is_completed:bool}>
-     */
-    private function normalizeChecklistItemsForComparison(array $items): array
-    {
-        $normalized = [];
-
-        foreach (array_values($items) as $item) {
-            $label = trim((string) ($item['label'] ?? ''));
-
-            if ($label === '') {
-                continue;
-            }
-
-            $normalized[] = [
-                'label' => $label,
-                'is_completed' => (bool) ($item['is_completed'] ?? false),
-            ];
-        }
-
-        return $normalized;
+        $toState = UpdateServiceOrderData::fromServiceOrder($updated)->toFormState();
+        $this->form->checklistItems = $toState['checklistItems'];
+        $this->form->historyItems = $toState['historyItems'];
+        $this->form->originalChecklistItems = $this->form->normalizeChecklistItems($this->form->checklistItems);
     }
 }

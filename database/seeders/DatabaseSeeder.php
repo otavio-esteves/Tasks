@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Secretariat;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -19,7 +20,7 @@ class DatabaseSeeder extends Seeder
     {
         $nomeSecretaria = 'Secretaria de Urbanismo';
 
-        $secretaria = \App\Models\Secretariat::updateOrCreate(
+        $secretaria = Secretariat::updateOrCreate(
             ['name' => $nomeSecretaria],
             ['slug' => Str::slug($nomeSecretaria)]
         );

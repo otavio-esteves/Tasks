@@ -1,4 +1,4 @@
-# Municipal Management
+# Prefeitura Connect
 
 Aplicação Laravel 12 + Livewire 3 para gestão municipal de:
 
@@ -24,7 +24,7 @@ O projeto hoje usa uma Clean Architecture pragmática:
 
 ## Subindo o projeto
 
-### Com Sail
+O ambiente oficial do projeto é o Docker com Laravel Sail.
 
 ```bash
 cp .env.example .env
@@ -36,18 +36,6 @@ cp .env.example .env
 ./vendor/bin/sail npm run dev
 ```
 
-### Sem Sail
-
-```bash
-cp .env.example .env
-composer install
-php artisan key:generate
-php artisan migrate
-npm install
-npm run dev
-php artisan serve
-```
-
 ## Comandos úteis
 
 ```bash
@@ -56,16 +44,8 @@ php artisan serve
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail php artisan test
-./vendor/bin/sail ./vendor/bin/pint --test
+./vendor/bin/sail pint --test
 ./vendor/bin/sail php artisan route:list
-```
-
-Atalhos do `composer.json`:
-
-```bash
-composer setup
-composer dev
-composer test
 ```
 
 ## Validação oficial
@@ -80,7 +60,7 @@ Use esta sequência:
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail php artisan test
-./vendor/bin/sail ./vendor/bin/pint --test
+./vendor/bin/sail pint --test
 ```
 
 O host local não é a referência oficial para validar o projeto.
@@ -281,6 +261,19 @@ Ao adicionar comportamento crítico:
 2. cubra autorização quando houver recurso protegido;
 3. cubra isolamento por secretaria quando a feature tocar dados multi-secretaria;
 4. atualize o teste de arquitetura se surgir nova regra estrutural simples de proteger.
+
+## Qualidade Estática
+
+O projeto utiliza **Pint** para estilo de código e **Larastan (PHPStan)** para análise estática.
+
+```bash
+./vendor/bin/sail composer lint     # Corrige estilo de código
+./vendor/bin/sail composer analyze  # Executa análise estática (Nível 5)
+```
+
+Configurações:
+- `pint.json`: Regras de estilo (Laravel padrão).
+- `phpstan.neon`: Configuração da análise estática.
 
 ## Testes existentes
 

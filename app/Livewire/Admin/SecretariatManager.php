@@ -2,15 +2,14 @@
 
 namespace App\Livewire\Admin;
 
-use App\Application\Secretariats\Data\CreateSecretariatData;
-use App\Application\Secretariats\Data\UpdateSecretariatData;
 use App\Application\Secretariats\DeleteSecretariat;
 use App\Application\Secretariats\GetSecretariat;
-use App\Application\Secretariats\ListSecretariats;
+use App\Application\Secretariats\Queries\ListSecretariats;
 use App\Application\Secretariats\SaveSecretariat;
 use App\Domain\Secretariats\Exceptions\SecretariatNameAlreadyExists;
 use App\Domain\Secretariats\Exceptions\SecretariatNotFound;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
+use App\Livewire\Forms\SecretariatForm;
 use App\Models\Secretariat;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -21,20 +20,11 @@ class SecretariatManager extends Component
 {
     use AuthorizesRequests, InteractsWithFriendlyExceptions, WithPagination;
 
-    public $search = '';
+    public string $search = '';
 
-    public $name;
+    public bool $isModalOpen = false;
 
-    public $description;
-
-    public $selected_id;
-
-    public $isModalOpen = false;
-
-    protected $rules = [
-        'name' => 'required|min:3',
-        'description' => 'nullable|string',
-    ];
+    public SecretariatForm $form;
 
     public function mount(): void
     {
@@ -46,44 +36,32 @@ class SecretariatManager extends Component
         $this->resetPage();
     }
 
-    public function render()
+    public function render(ListSecretariats $listSecretariats)
     {
         $this->authorize('viewAny', Secretariat::class);
 
         return view('livewire.admin.secretariat-manager', [
-            'secretariats' => app(ListSecretariats::class)->handle($this->search, 10),
+            'secretariats' => $listSecretariats->handle($this->search, 10),
         ])->layout('layouts.app');
     }
 
     public function create(): void
     {
         $this->authorize('create', Secretariat::class);
-        $this->resetInputFields();
-        $this->openModal();
-    }
-
-    public function openModal(): void
-    {
+        $this->form->reset();
         $this->isModalOpen = true;
     }
 
     public function closeModal(): void
     {
         $this->isModalOpen = false;
-        $this->resetValidation();
+        $this->form->resetValidation();
     }
 
-    private function resetInputFields(): void
-    {
-        $this->name = '';
-        $this->description = '';
-        $this->selected_id = null;
-    }
-
-    public function store(): void
+    public function store(GetSecretariat $getSecretariat, SaveSecretariat $saveSecretariat): void
     {
         try {
-            $secretariat = $this->selected_id ? app(GetSecretariat::class)->handle((int) $this->selected_id) : null;
+            $secretariat = $this->form->selected_id ? $getSecretariat->handle((int) $this->form->selected_id) : null;
 
             if ($secretariat) {
                 $this->authorize('update', $secretariat);
@@ -91,44 +69,29 @@ class SecretariatManager extends Component
                 $this->authorize('create', Secretariat::class);
             }
 
-            $this->validate();
+            $this->form->save($saveSecretariat);
 
-            app(SaveSecretariat::class)->handle(
-                $this->selected_id ? (int) $this->selected_id : null,
-                $this->selected_id
-                    ? UpdateSecretariatData::fromArray([
-                        'name' => (string) $this->name,
-                        'description' => $this->description,
-                    ])
-                    : CreateSecretariatData::fromArray([
-                        'name' => (string) $this->name,
-                        'description' => $this->description,
-                    ]),
-            );
-
-            session()->flash('message', $this->selected_id ? 'Secretaria atualizada!' : 'Secretaria criada com sucesso!');
+            session()->flash('message', $this->form->selected_id ? 'Secretaria atualizada!' : 'Secretaria criada com sucesso!');
             $this->closeModal();
-            $this->resetInputFields();
+            $this->form->reset();
         } catch (SecretariatNameAlreadyExists $e) {
-            $this->addError('name', $e->getMessage());
+            $this->addError('form.name', $e->getMessage());
         } catch (SecretariatNotFound $e) {
             $this->flashException($e);
             $this->closeModal();
-            $this->resetInputFields();
+            $this->form->reset();
         } catch (Throwable) {
             $this->flashFallback('Nao foi possivel salvar a secretaria agora.');
         }
     }
 
-    public function edit($id): void
+    public function edit(int $id, GetSecretariat $getSecretariat): void
     {
         try {
-            $record = app(GetSecretariat::class)->handle((int) $id);
+            $record = $getSecretariat->handle($id);
             $this->authorize('update', $record);
-            $this->selected_id = $record->id;
-            $this->name = $record->name;
-            $this->description = $record->description;
-            $this->openModal();
+            $this->form->setSecretariat($record);
+            $this->isModalOpen = true;
         } catch (SecretariatNotFound $e) {
             $this->flashException($e);
         } catch (Throwable) {
@@ -136,12 +99,12 @@ class SecretariatManager extends Component
         }
     }
 
-    public function delete($id): void
+    public function delete(int $id, GetSecretariat $getSecretariat, DeleteSecretariat $deleteSecretariat): void
     {
         try {
-            $record = app(GetSecretariat::class)->handle((int) $id);
+            $record = $getSecretariat->handle($id);
             $this->authorize('delete', $record);
-            app(DeleteSecretariat::class)->handle((int) $id);
+            $deleteSecretariat->handle($id);
             session()->flash('message', 'Secretaria movida para a lixeira.');
         } catch (SecretariatNotFound $e) {
             $this->flashException($e);

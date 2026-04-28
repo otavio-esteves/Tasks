@@ -2,6 +2,9 @@
 
 namespace App\Application\Secretariats\Data;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract readonly class SecretariatMutationData
 {
     public function __construct(

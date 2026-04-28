@@ -260,14 +260,15 @@ class ServiceOrderDomainTest extends TestCase
             'observation' => ' Observacao ',
             'due_date' => '2026-05-10',
             'is_urgent' => true,
+            'status' => ServiceOrderStatus::Pending,
         ]);
 
         $serviceOrder->checklistItems()->createMany([
-            ['label' => 'Item 1', 'is_completed' => false, 'sort_order' => 0],
-            ['label' => 'Item 2', 'is_completed' => true, 'sort_order' => 1],
+            ['label' => 'Item 1', 'is_completed' => false],
+            ['label' => 'Item 2', 'is_completed' => true],
         ]);
 
-        $data = UpdateServiceOrderData::fromServiceOrder($serviceOrder->fresh('checklistItems'));
+        $data = UpdateServiceOrderData::fromServiceOrder($serviceOrder->fresh(['checklistItems', 'histories']));
 
         $this->assertSame([
             'title' => '  ODS teste  ',
@@ -276,14 +277,16 @@ class ServiceOrderDomainTest extends TestCase
             'dueDate' => '2026-05-10',
             'isUrgent' => true,
             'observation' => 'Observacao',
+            'status' => 'pending',
             'checklistItems' => [
                 ['label' => 'Item 1', 'is_completed' => false],
                 ['label' => 'Item 2', 'is_completed' => true],
             ],
+            'historyItems' => [],
         ], $data->toFormState());
     }
 
-    public function test_service_order_status_transition_is_explicit(): void
+    public function test_service_order_status_transition_is_flexible(): void
     {
         $serviceOrder = ServiceOrder::factory()->create([
             'status' => ServiceOrderStatus::Pending,
@@ -299,9 +302,11 @@ class ServiceOrderDomainTest extends TestCase
 
         $this->assertSame(ServiceOrderStatus::Completed, $serviceOrder->status);
 
-        $this->expectException(InvalidServiceOrderStatusTransition::class);
-
+        // Agora permitido voltar para pendente
         $serviceOrder->changeStatus(ServiceOrderStatus::Pending);
+        $serviceOrder->refresh();
+
+        $this->assertSame(ServiceOrderStatus::Pending, $serviceOrder->status);
     }
 
     public function test_change_service_order_status_use_case_updates_scoped_record(): void

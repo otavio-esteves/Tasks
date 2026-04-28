@@ -21,10 +21,10 @@ new class extends Component
         <div class="flex items-center gap-6">
             <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-black tracking-widest text-white dark:bg-white dark:text-slate-900">
-                    MM
+                    PC
                 </div>
                 <div class="hidden sm:block">
-                    <div class="text-sm font-semibold text-slate-900 dark:text-white">Municipal Management</div>
+                    <div class="text-sm font-semibold text-slate-900 dark:text-white">Prefeitura Connect</div>
                     <div class="text-xs text-slate-500 dark:text-slate-400">Painel administrativo</div>
                 </div>
             </a>

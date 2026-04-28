@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Listings;
 
-use App\Application\Categories\ListCategories;
-use App\Application\Secretariats\ListSecretariats;
+use App\Application\Categories\Queries\ListCategories;
+use App\Application\Secretariats\Queries\ListSecretariats;
 use App\Models\Category;
 use App\Models\Secretariat;
 use Illuminate\Database\Eloquent\Factories\Sequence;

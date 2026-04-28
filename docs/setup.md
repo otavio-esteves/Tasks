@@ -14,7 +14,8 @@ Para instalar dependências, gerar assets e validar o projeto, use Sail em vez d
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail php artisan test
-./vendor/bin/sail ./vendor/bin/pint --test
+./vendor/bin/sail composer analyze
+./vendor/bin/sail composer lint
 ```
 
 ## Observações importantes

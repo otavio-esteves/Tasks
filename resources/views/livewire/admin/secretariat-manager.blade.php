@@ -55,20 +55,20 @@
             <div class="relative w-full max-w-lg mx-auto my-6 z-50">
                 <div class="bg-white rounded-lg shadow-lg relative flex flex-col w-full outline-none focus:outline-none">
                     <div class="p-6 border-b border-solid border-gray-200 rounded-t">
-                        <h3 class="text-xl font-semibold">{{ $selected_id ? 'Editar Secretaria' : 'Nova Secretaria' }}</h3>
+                        <h3 class="text-xl font-semibold">{{ $form->selected_id ? 'Editar Secretaria' : 'Nova Secretaria' }}</h3>
                     </div>
 
                     <div class="p-6 flex-auto">
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Nome da Secretaria</label>
-                            <input type="text" wire:model="name" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <input type="text" wire:model="form.name" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            @error('form.name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Descrição (Opcional)</label>
-                            <textarea wire:model="description" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                            @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <textarea wire:model="form.description" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            @error('form.description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 

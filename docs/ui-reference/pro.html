@@ -215,6 +215,7 @@
               location: 'Av. Bernardo Sayão',
               category: 'Iluminação',
               date: '2025-11-25',
+              status: 'Pendente',
               urgent: true,
               checklist: [
                 { text: 'Verificar fiação base', done: true },
@@ -265,7 +266,8 @@
                     location: 'Av. Bernardo Sayão',
                     category: 'Iluminação',
                     date: '2025-11-25',
-                    urgent: true,
+                    status: 'Pendente',
+              urgent: true,
                     checklist: [
                       { text: 'Verificar fiação base', done: true },
                       { text: 'Substituir reator', done: false },
@@ -299,6 +301,7 @@
               location: 'Rua das Magnólias',
               category: 'Obras',
               date: '2025-11-26',
+              status: 'Pendente',
               urgent: true,
               checklist: [
                 { text: 'Sinalizar perímetro', done: true },
@@ -349,7 +352,8 @@
                     location: 'Rua das Magnólias',
                     category: 'Obras',
                     date: '2025-11-26',
-                    urgent: true,
+                    status: 'Pendente',
+              urgent: true,
                     checklist: [
                       { text: 'Sinalizar perímetro', done: true },
                       { text: 'Remover asfalto solto', done: true },
@@ -383,6 +387,7 @@
               location: 'Praça da Bíblia',
               category: 'Limpeza',
               date: '2025-11-20',
+              status: 'Em andamento',
               urgent: false,
               checklist: [],
             })
@@ -429,7 +434,8 @@
                     location: 'Praça da Bíblia',
                     category: 'Limpeza',
                     date: '2025-11-20',
-                    urgent: false,
+                    status: 'Em andamento',
+              urgent: false,
                     checklist: [],
                   });
                 "
@@ -459,6 +465,7 @@
               location: 'Av. Brasil, Centro',
               category: 'Iluminação',
               date: '2025-11-10',
+              status: 'Concluído',
               urgent: false,
               checklist: [],
             })
@@ -505,7 +512,8 @@
                     location: 'Av. Brasil, Centro',
                     category: 'Iluminação',
                     date: '2025-11-10',
-                    urgent: false,
+                    status: 'Concluído',
+              urgent: false,
                     checklist: [],
                   });
                 "
@@ -535,6 +543,7 @@
               location: 'Setor Santa Efigênia',
               category: 'Limpeza',
               date: '2025-11-21',
+              status: 'Em andamento',
               urgent: false,
               checklist: [],
             })
@@ -581,7 +590,8 @@
                     location: 'Setor Santa Efigênia',
                     category: 'Limpeza',
                     date: '2025-11-21',
-                    urgent: false,
+                    status: 'Em andamento',
+              urgent: false,
                     checklist: [],
                   });
                 "
@@ -611,7 +621,7 @@
       aria-hidden="true"
     >
       <div
-        class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 modal-transition flex flex-col max-h-[90vh] h-[90vh] md:h-[621px]"
+        class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 modal-transition flex flex-col max-h-[90vh] h-[90vh] md:h-[621px]"
       >
         <div
           class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0"
@@ -759,7 +769,7 @@
                 />
 
                 <div
-                  class="flex items-center justify-between p-4 rounded-2xl border transition-all duration-75 bg-white dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 group-has-[:checked]:bg-red-50/50 dark:group-has-[:checked]:bg-red-950/20 group-has-[:focus-visible]:ring-2 group-has-[:focus-visible]:ring-red-500/20 group-has-[:focus-visible]:ring-offset-2"
+                  class="flex items-center justify-between p-4 rounded-xl border transition-all duration-75 bg-white dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 group-has-[:checked]:bg-red-50/50 dark:group-has-[:checked]:bg-red-950/20 group-has-[:focus-visible]:ring-2 group-has-[:focus-visible]:ring-red-500/20 group-has-[:focus-visible]:ring-offset-2"
                 >
                   <div class="flex items-center gap-4">
                     <div
@@ -801,6 +811,61 @@
                 class="block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none transition-all duration-200 resize-none text-slate-900 dark:text-slate-100 custom-scrollbar"
               ></textarea>
             </div>
+            <div>
+              <label
+                class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 transition-colors"
+              >
+                Status da ODS
+              </label>
+
+              <input type="hidden" id="inputStatus" value="Pendente" />
+
+              <div
+                class="inline-flex w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-1"
+                role="group"
+                aria-label="Status da ODS"
+              >
+                <button
+                  type="button"
+                  id="statusPendente"
+                  onclick="setOdsStatus('Pendente')"
+                  class="status-option flex-1 h-8 rounded-md px-2 text-xs font-semibold transition-colors text-slate-900 dark:text-white bg-white dark:bg-slate-900 shadow-sm"
+                  aria-pressed="true"
+                >
+                  <span class="inline-flex items-center justify-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                    Pendente
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  id="statusEmAndamento"
+                  onclick="setOdsStatus('Em andamento')"
+                  class="status-option flex-1 h-8 rounded-md px-2 text-xs font-semibold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  aria-pressed="false"
+                >
+                  <span class="inline-flex items-center justify-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    Em andamento
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  id="statusConcluido"
+                  onclick="setOdsStatus('Concluído')"
+                  class="status-option flex-1 h-8 rounded-md px-2 text-xs font-semibold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  aria-pressed="false"
+                >
+                  <span class="inline-flex items-center justify-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                    Concluído
+                  </span>
+                </button>
+              </div>
+            </div>
+
           </div>
 
           <div
@@ -870,7 +935,7 @@
       aria-hidden="true"
     >
       <div
-        class="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 modal-transition flex h-[600px] max-h-[90vh]"
+        class="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 modal-transition flex h-[600px] max-h-[90vh]"
       >
         <aside
           class="w-64 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-6 flex flex-col gap-6 shrink-0 hidden md:flex"
@@ -1822,6 +1887,34 @@
       let currentChecklist = [];
       let currentView = "details"; // 'details' ou 'checklist'
 
+      function getStatusButtonId(status) {
+        if (status === "Em andamento") return "statusEmAndamento";
+        if (status === "Concluído") return "statusConcluido";
+        return "statusPendente";
+      }
+
+      function setOdsStatus(status) {
+        const normalizedStatus = status || "Pendente";
+        const inputStatus = document.getElementById("inputStatus");
+        const buttons = document.querySelectorAll(".status-option");
+
+        if (inputStatus) {
+          inputStatus.value = normalizedStatus;
+        }
+
+        buttons.forEach((button) => {
+          const isSelected = button.id === getStatusButtonId(normalizedStatus);
+          button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+          button.classList.toggle("bg-white", isSelected);
+          button.classList.toggle("dark:bg-slate-900", isSelected);
+          button.classList.toggle("shadow-sm", isSelected);
+          button.classList.toggle("text-slate-900", isSelected);
+          button.classList.toggle("dark:text-white", isSelected);
+          button.classList.toggle("text-slate-500", !isSelected);
+          button.classList.toggle("dark:text-slate-400", !isSelected);
+        });
+      }
+
       function renderChecklist() {
         const container = document.getElementById("checklistContainer");
         container.innerHTML = "";
@@ -1920,6 +2013,7 @@
           modalTitle.innerText = "Nova Ordem de Serviço";
           btnSubmit.innerText = "Criar ODS";
           currentChecklist = [];
+          setOdsStatus("Pendente");
         } else {
           // 'edit' ou 'checklist' vêm com dados
           modalTitle.innerText = `Editar ODS - ${data.id}`;
@@ -1932,6 +2026,7 @@
           document.getElementById("inputDate").value = data.date;
           document.getElementById("inputUrgent").checked = data.urgent;
           document.getElementById("inputObs").value = data.obs || "";
+          setOdsStatus(data.status || "Pendente");
 
           // Carrega checklist
           currentChecklist = data.checklist

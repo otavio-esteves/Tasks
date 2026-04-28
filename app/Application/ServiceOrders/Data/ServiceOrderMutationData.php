@@ -2,12 +2,20 @@
 
 namespace App\Application\ServiceOrders\Data;
 
+use App\Domain\ServiceOrders\ServiceOrderStatus;
+use App\Models\OdsChecklist;
+use App\Models\OdsHistory;
 use App\Models\ServiceOrder;
+use Carbon\Carbon;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract readonly class ServiceOrderMutationData
 {
     /**
      * @param  list<ChecklistItemData>  $checklistItems
+     * @param  list<HistoryItemData>  $historyItems
      */
     public function __construct(
         public string $title,
@@ -16,7 +24,9 @@ abstract readonly class ServiceOrderMutationData
         public ?string $dueDate,
         public bool $isUrgent,
         public ?string $observation,
+        public ?string $status = null,
         public array $checklistItems = [],
+        public array $historyItems = [],
     ) {}
 
     /**
@@ -27,6 +37,7 @@ abstract readonly class ServiceOrderMutationData
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null,
+     *     status?:string|null,
      *     checklist_items?:array<int, array{label?:string|null,is_completed?:bool,sort_order?:int}>
      * }  $data
      */
@@ -39,22 +50,35 @@ abstract readonly class ServiceOrderMutationData
             dueDate: self::normalizeNullableString($data['due_date'] ?? null),
             isUrgent: (bool) $data['is_urgent'],
             observation: self::normalizeNullableString($data['observation'] ?? null),
+            status: self::normalizeNullableString($data['status'] ?? null),
             checklistItems: self::normalizeChecklistItems($data['checklist_items'] ?? []),
         );
     }
 
     public static function fromServiceOrder(ServiceOrder $serviceOrder): static
     {
+        /** @var Carbon|null $dueDate */
+        $dueDate = $serviceOrder->due_date;
+
+        /** @var ServiceOrderStatus $status */
+        $status = $serviceOrder->status;
+
         return new static(
             title: $serviceOrder->title,
             location: self::normalizeNullableString($serviceOrder->location),
-            categoryId: $serviceOrder->category_id,
-            dueDate: $serviceOrder->due_date?->format('Y-m-d'),
+            categoryId: (int) $serviceOrder->category_id,
+            dueDate: $dueDate?->format('Y-m-d'),
             isUrgent: (bool) $serviceOrder->is_urgent,
             observation: self::normalizeNullableString($serviceOrder->observation),
+            status: $status->value,
             checklistItems: array_values(
                 $serviceOrder->checklistItems
-                    ->map(fn ($item) => ChecklistItemData::fromModel($item))
+                    ->map(fn (OdsChecklist $item) => ChecklistItemData::fromModel($item))
+                    ->all(),
+            ),
+            historyItems: array_values(
+                $serviceOrder->histories
+                    ->map(fn (OdsHistory $item) => HistoryItemData::fromModel($item))
                     ->all(),
             ),
         );
@@ -67,12 +91,13 @@ abstract readonly class ServiceOrderMutationData
      *     category_id:int,
      *     due_date:string|null,
      *     is_urgent:bool,
-     *     observation:string|null
+     *     observation:string|null,
+     *     status?:string|null
      * }
      */
     public function toPersistenceArray(): array
     {
-        return [
+        $data = [
             'title' => $this->title,
             'location' => $this->location,
             'category_id' => $this->categoryId,
@@ -80,6 +105,12 @@ abstract readonly class ServiceOrderMutationData
             'is_urgent' => $this->isUrgent,
             'observation' => $this->observation,
         ];
+
+        if ($this->status) {
+            $data['status'] = $this->status;
+        }
+
+        return $data;
     }
 
     /**
@@ -101,7 +132,9 @@ abstract readonly class ServiceOrderMutationData
      *     dueDate:string,
      *     isUrgent:bool,
      *     observation:string,
-     *     checklistItems:list<array{label:string,is_completed:bool}>
+     *     status:string|null,
+     *     checklistItems:list<array{label:string,is_completed:bool}>,
+     *     historyItems:list<array{description:string,created_at:string|null,user_name:string|null,metadata:array|null}>
      * }
      */
     public function toFormState(): array
@@ -113,9 +146,14 @@ abstract readonly class ServiceOrderMutationData
             'dueDate' => $this->dueDate ?? '',
             'isUrgent' => $this->isUrgent,
             'observation' => $this->observation ?? '',
+            'status' => $this->status,
             'checklistItems' => array_map(
                 fn (ChecklistItemData $item) => $item->toFormState(),
                 $this->checklistItems,
+            ),
+            'historyItems' => array_map(
+                fn (HistoryItemData $item) => $item->toFormState(),
+                $this->historyItems,
             ),
         ];
     }

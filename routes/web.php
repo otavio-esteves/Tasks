@@ -6,10 +6,11 @@ use App\Livewire\Admin\SecretariatManager;
 use App\Livewire\Secretariat\ServiceOrderManager;
 use App\Models\Category;
 use App\Models\Secretariat;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
-    /** @var \App\Models\User|null $user */
+    /** @var User|null $user */
     $user = auth()->user();
 
     if ($user === null) {
@@ -23,7 +24,7 @@ Route::get('/', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = auth()->user();
         $target = $resolveUserHomeRoute->handle($user);
 
