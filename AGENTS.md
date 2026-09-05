@@ -18,18 +18,7 @@ O objetivo é garantir que o Codex:
 
 # 1. Contexto do projeto
 
-Este é um projeto Laravel com front-end baseado em Blade, Livewire e/ou componentes reutilizáveis.
-
-O projeto pode usar:
-- Laravel;
-- Blade;
-- Livewire;
-- Tailwind CSS;
-- Vite;
-- Laravel Sail;
-- Composer;
-- NPM;
-- PHPUnit/Pest.
+Tasks usa Laravel 12, Livewire 3/Volt, Blade, Tailwind, Vite e PHPUnit. O ambiente oficial é Sail com PHP 8.2, Node.js 24 LTS, PostgreSQL 18 e Redis.
 
 Antes de modificar arquivos, inspecione a estrutura real do projeto.
 
@@ -77,7 +66,9 @@ Antes de implementar qualquer tarefa:
 
 ## Regras arquiteturais obrigatórias
 
-Considere [docs/architecture-guidelines.md](docs/architecture-guidelines.md) como a referência oficial de arquitetura do projeto.
+As regras específicas de [docs/architecture-guidelines.md](docs/architecture-guidelines.md) prevalecem sobre recomendações genéricas de Laravel, inclusive neste arquivo. Leia também o README, [a auditoria arquitetural](docs/architecture-audit.md) e [o setup](docs/setup.md) antes de implementar.
+
+A arquitetura atual é suficientemente madura. Preserve casos de uso com `handle(...)`, DTOs, contratos, repositórios e namespaces. Não introduza Actions, novas abstrações ou reorganizações por preferência estética. Refatorações arquiteturais exigem uma necessidade objetiva dentro da tarefa. Priorize desenvolvimento de produto.
 
 Resumo operacional:
 
@@ -86,7 +77,7 @@ Resumo operacional:
   - concentra regras centrais, invariantes, enums, value objects e exceptions de domínio.
 - Application:
   - orquestra casos de uso;
-  - recebe e devolve DTOs claros;
+  - usa DTOs para input estruturado e pode retornar models ou result objects conforme o padrão existente;
   - pode depender de Domain e de contratos abstratos;
   - não renderiza UI nem contém detalhe de Livewire.
 - Infrastructure:
@@ -141,9 +132,7 @@ Ao final de cada tarefa:
 
 ## Ambiente local com Laravel Sail
 
-Este projeto pode usar Laravel Sail no ambiente local.
-
-Quando Sail estiver disponível, prefira os comandos abaixo.
+Use Sail como referência oficial de validação. A instalação inicial de `vendor/bin/sail` está documentada em [docs/setup.md](docs/setup.md).
 
 ### Subir containers
 
@@ -171,7 +160,7 @@ Nunca use:
 ./vendor/bin/sail php artisan test
 ```
 
-Esse comando está incorreto para este projeto.
+O formato padronizado neste repositório é `sail artisan ...`.
 
 ### Rodar comandos Artisan
 
@@ -195,70 +184,31 @@ Exemplos:
 
 ```bash
 ./vendor/bin/sail composer install
-./vendor/bin/sail composer update
+./vendor/bin/sail composer analyze
+./vendor/bin/sail pint --test
 ```
 
 ### NPM com Sail
 
 ```bash
-./vendor/bin/sail npm install
+./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail npm run dev
 ```
 
 ---
 
-# 4. Ambiente sem Sail
+## Validação e alternativas
 
-Se Sail não estiver disponível, tente usar comandos locais equivalentes.
+Execute `composer install`, `npm ci`, `npm run build`, `artisan test`, `pint --test` e `composer analyze` via Sail. A suíte completa inclui `tests/Unit/ArchitectureTest.php`; para diagnóstico, execute esse arquivo diretamente. Não reduza o nível do PHPStan nem remova testes/assertions para obter sucesso.
 
-## Instalar dependências PHP
+Os guards arquiteturais atuais são scans leves: protegem Domain contra Eloquent/HTTP/Livewire, Application contra UI/HTTP e componentes Livewire críticos contra persistência direta. Não os trate como análise completa de dependências nem amplie seu escopo sem necessidade.
 
-```bash
-composer install
-```
+Se Sail estiver indisponível, tente os equivalentes no host (`php artisan test`, `vendor/bin/pint --test`, `composer analyze`, etc.) e informe que a validação ocorreu fora do ambiente oficial. Não sobrescreva `.env`; copie `.env.example` somente na primeira instalação. Não gere novamente a chave de uma instalação existente.
 
-## Configurar ambiente
+Após mudar backend, valide primeiro o teste relacionado e depois a suíte apropriada. Após mudar frontend, execute o build e confira classe Livewire, view, rotas e testes. Toda regra crítica nova precisa de teste de fluxo, autorização e isolamento por equipe quando aplicável. Use factories e mantenha seeders pequenos, sem depender de dados manuais.
 
-Se não existir `.env`, copie:
-
-```bash
-cp .env.example .env
-```
-
-Depois gere a chave:
-
-```bash
-php artisan key:generate
-```
-
-## Rodar migrations
-
-```bash
-php artisan migrate
-```
-
-## Rodar testes
-
-```bash
-php artisan test
-```
-
-## Instalar dependências JS
-
-```bash
-npm install
-```
-
-## Build do front-end
-
-```bash
-npm run build
-```
-
----
-
-# 5. Se comandos falharem
+# 4. Se comandos falharem
 
 Se algum comando falhar, não ignore.
 
@@ -275,11 +225,7 @@ Exemplos de falhas comuns:
 
 Provável causa: dependências PHP ainda não foram instaladas.
 
-Tente:
-
-```bash
-composer install
-```
+Siga o bootstrap via Docker em [docs/setup.md](docs/setup.md); se Docker não estiver disponível, tente `composer install` no host.
 
 Depois tente novamente:
 
@@ -330,125 +276,7 @@ Não altere configuração de banco sem necessidade.
 
 ---
 
-# 6. Codex local, Cloud e sandbox
-
-## Codex local
-
-Quando o Codex estiver rodando localmente no computador do usuário, ele pode conseguir usar Sail, Docker, Composer, NPM e PHP locais, dependendo das permissões.
-
-Se um comando for bloqueado por sandbox ou aprovação, explique isso claramente.
-
-Não invente que o comando foi executado.
-
-## Codex Cloud ou ambiente remoto
-
-Quando estiver em ambiente remoto/cloud, não assuma que Docker ou Sail estarão disponíveis.
-
-Nesse caso, prefira comandos sem Sail:
-
-```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan test
-npm install
-npm run build
-```
-
-Se faltar extensão PHP, serviço de banco, Node, NPM ou permissão, informe claramente.
-
----
-
-# 7. Estrutura esperada do projeto
-
-Verifique a estrutura real antes de agir, mas normalmente:
-
-## Backend Laravel
-
-- `app/Models/`
-- `app/Http/Controllers/`
-- `app/Http/Requests/`
-- `app/Services/`
-- `app/Actions/`
-- `app/Policies/`
-- `app/Providers/`
-- `routes/web.php`
-- `routes/api.php`
-- `database/migrations/`
-- `database/seeders/`
-- `tests/Feature/`
-- `tests/Unit/`
-
-## Front-end
-
-- `resources/views/`
-- `resources/views/components/`
-- `resources/views/layouts/`
-- `resources/css/`
-- `resources/js/`
-- `public/`
-
-## Livewire, se existir
-
-- `app/Livewire/`
-- `resources/views/livewire/`
-
----
-
-# 8. Convenções de arquitetura
-
-## Controllers
-
-Controllers devem ser simples.
-
-Evite colocar regra de negócio pesada dentro de controllers.
-
-Prefira mover lógica para:
-
-- Services;
-- Actions;
-- Form Requests;
-- Policies;
-- Models, quando fizer sentido;
-- Query objects, quando houver consultas complexas.
-
-## Requests
-
-Validações devem ficar preferencialmente em Form Requests.
-
-Evite validação extensa diretamente no controller.
-
-## Models
-
-Models podem conter:
-
-- relacionamentos;
-- casts;
-- scopes;
-- accessors/mutators simples;
-- regras diretamente ligadas ao domínio do próprio model.
-
-Evite models gigantes com responsabilidades demais.
-
-## Services e Actions
-
-Use Services ou Actions quando uma operação:
-
-- tiver vários passos;
-- for reutilizada;
-- envolver regra de negócio;
-- envolver persistência em múltiplas tabelas;
-- precisar ficar testável.
-
-## Policies
-
-Use Policies para autorização quando o projeto já seguir esse padrão.
-
-Não espalhe regras de autorização complexas diretamente em views ou controllers.
-
----
-
-# 9. Convenções de banco de dados
+# 5. Convenções de banco de dados
 
 ## Migrations
 
@@ -471,53 +299,7 @@ Não espalhe regras de autorização complexas diretamente em views ou controlle
 
 ---
 
-# 10. Convenções de testes
-
-Sempre que possível, rode testes após alterações.
-
-## Com Sail
-
-```bash
-./vendor/bin/sail artisan test
-```
-
-ou:
-
-```bash
-./vendor/bin/sail test
-```
-
-## Sem Sail
-
-```bash
-php artisan test
-```
-
-## Testes específicos
-
-Se alterar uma funcionalidade específica, rode primeiro o teste relacionado.
-
-Exemplo:
-
-```bash
-php artisan test --filter=NomeDoTeste
-```
-
-ou com Sail:
-
-```bash
-./vendor/bin/sail artisan test --filter=NomeDoTeste
-```
-
-## Se não houver testes
-
-Se o projeto não tiver testes suficientes, informe isso claramente.
-
-Não diga que a alteração está totalmente validada se não houver testes.
-
----
-
-# 11. Convenções de front-end
+# 6. Convenções de front-end
 
 ## Objetivo visual
 
@@ -589,7 +371,7 @@ Prefira alterar componentes globais quando a mudança deve afetar o sistema inte
 
 ---
 
-# 12. Uso de imagens como referência visual
+# 7. Uso de imagens como referência visual
 
 Quando uma imagem for fornecida como referência de design:
 
@@ -622,7 +404,7 @@ Quando uma imagem for fornecida como referência de design:
 
 ---
 
-# 13. Layouts e componentes Blade
+# 8. Layouts e componentes Blade
 
 Ao mexer no front-end, procure primeiro por:
 
@@ -648,7 +430,7 @@ Não faça alterações repetidas em dezenas de telas se um componente global re
 
 ---
 
-# 14. Livewire
+# 9. Livewire
 
 Se o projeto usa Livewire:
 
@@ -668,7 +450,7 @@ Depois de alterar componente Livewire, verifique:
 
 ---
 
-# 15. Segurança
+# 10. Segurança
 
 Não introduza vulnerabilidades.
 
@@ -705,7 +487,7 @@ Prefira Query Builder/Eloquent com bindings.
 
 ---
 
-# 16. Performance
+# 11. Performance
 
 Evite introduzir problemas como:
 
@@ -721,7 +503,7 @@ Use paginação em listagens grandes.
 
 ---
 
-# 17. Acessibilidade e usabilidade
+# 12. Acessibilidade e usabilidade
 
 Sempre que alterar UI:
 
@@ -735,18 +517,18 @@ Sempre que alterar UI:
 
 ---
 
-# 18. Padrão de commits
+# 13. Padrão de commits
 
-Quando solicitado a criar mensagem de commit, use mensagens claras.
+Commits devem ser pequenos, sem alterações não relacionadas, com mensagens em inglês no padrão dos commits recentes (`type(scope): description` ou `type: description`).
 
 Formato recomendado:
 
 ```text
-feat: adiciona checklist às tarefas
-fix: corrige validação de formulário de Tarefa
-refactor: reorganiza componentes do dashboard
-style: ajusta padrão visual do front-end
-test: adiciona testes para criação de checklist
+feat(tasks): add task checklists
+fix(tasks): validate task form input
+ci: enforce static analysis
+style: align shared form components
+test(tasks): cover checklist creation
 ```
 
 Evite mensagens vagas como:
@@ -760,28 +542,7 @@ mudanças
 
 ---
 
-# 19. O que não fazer
-
-Não faça:
-
-- alteração de regra de negócio sem pedido;
-- reescrita completa do projeto sem necessidade;
-- alteração de migrations antigas sem justificativa;
-- exclusão de testes;
-- remoção de validações;
-- remoção de autorização;
-- alteração de nomes de tabelas sem necessidade;
-- mudança visual destoante do padrão;
-- instalação de pacotes sem justificar;
-- comandos destrutivos sem autorização;
-- `migrate:fresh` sem autorização;
-- `db:wipe` sem autorização;
-- exclusão de arquivos importantes;
-- alteração em `.env` real com dados sensíveis.
-
----
-
-# 20. Comandos destrutivos
+# 14. Comandos destrutivos
 
 Nunca execute automaticamente comandos como:
 
@@ -800,105 +561,7 @@ Se achar necessário, explique o motivo e peça autorização.
 
 ---
 
-# 21. Fluxo recomendado para tarefas
-
-Para cada tarefa:
-
-1. Entender o pedido.
-2. Ler `AGENTS.md`.
-3. Inspecionar arquivos relevantes.
-4. Criar plano curto.
-5. Implementar.
-6. Rodar testes/build quando possível.
-7. Corrigir problemas encontrados.
-8. Resumir alterações.
-
----
-
-# 22. Fluxo recomendado para mudanças de front-end
-
-Quando a tarefa for visual:
-
-1. Identificar layout global.
-2. Identificar componentes reutilizáveis.
-3. Verificar Tailwind/CSS existente.
-4. Aplicar padrão global primeiro.
-5. Ajustar telas específicas depois.
-6. Rodar build do front-end.
-7. Verificar se não quebrou Blade/Livewire.
-8. Listar arquivos alterados.
-
-Com Sail:
-
-```bash
-./vendor/bin/sail npm run build
-```
-
-Sem Sail:
-
-```bash
-npm run build
-```
-
----
-
-# 23. Fluxo recomendado para mudanças de backend
-
-Quando a tarefa for backend:
-
-1. Identificar model, controller, request, migration e testes relacionados.
-2. Verificar regras existentes.
-3. Implementar com menor impacto possível.
-4. Adicionar ou ajustar testes quando fizer sentido.
-5. Rodar testes.
-
-Com Sail:
-
-```bash
-./vendor/bin/sail artisan test
-```
-
-Sem Sail:
-
-```bash
-php artisan test
-```
-
----
-
-# 24. Fluxo recomendado para novas tabelas
-
-Quando precisar criar uma nova tabela:
-
-1. Criar migration nova.
-2. Criar model, se necessário.
-3. Definir relacionamentos.
-4. Definir fillable/casts.
-5. Criar controller/action/service, se necessário.
-6. Criar validação via Form Request, se fizer sentido.
-7. Criar views/componentes.
-8. Criar testes básicos.
-9. Rodar migrations e testes.
-
-Nunca altere migration antiga sem motivo claro.
-
----
-
-# 25. Critérios de conclusão
-
-Uma tarefa só deve ser considerada concluída quando:
-
-- o código foi alterado conforme solicitado;
-- não há mudança fora do escopo;
-- os arquivos alterados foram listados;
-- os testes foram executados ou a impossibilidade foi explicada;
-- o build foi executado quando houve alteração de front-end;
-- os erros encontrados foram relatados;
-- a solução respeita este `AGENTS.md`.
-
----
-
-# 26. Resposta final esperada do Codex
+# 15. Resposta final esperada do Codex
 
 Ao finalizar, responda neste formato:
 
@@ -937,50 +600,3 @@ Próximo passo sugerido:
 ```
 
 ---
-
-# 27. Instrução especial sobre Sail
-
-Sempre que precisar testar Laravel neste projeto, tente primeiro:
-
-```bash
-./vendor/bin/sail artisan test
-```
-
-ou:
-
-```bash
-./vendor/bin/sail test
-```
-
-Não use:
-
-```bash
-./vendor/bin/sail php artisan test
-```
-
-Se Sail não estiver disponível, use:
-
-```bash
-php artisan test
-```
-
-e explique que o teste foi executado fora do Sail.
-
----
-
-# 28. Instrução especial sobre visual
-
-O usuário prefere uma interface com:
-
-- cantos menos arredondados;
-- aparência administrativa;
-- layout limpo;
-- visual profissional;
-- componentes consistentes;
-- botões discretos;
-- tabelas bem organizadas;
-- formulários objetivos;
-- baixa “fofura” visual;
-- nada de cantos excessivamente arredondados.
-
-Sempre respeite isso em alterações de front-end.
