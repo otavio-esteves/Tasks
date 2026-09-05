@@ -1,10 +1,10 @@
-# Prefeitura Connect
+# Tasks
 
-Aplicação Laravel 12 + Livewire 3 para gestão municipal de:
+Aplicação Laravel 12 + Livewire 3 para organizar o trabalho de qualquer organização:
 
-- secretarias;
+- equipes;
 - categorias;
-- ordens de serviço (`ServiceOrder` / `ODS`).
+- tarefas (`Task`).
 
 O projeto hoje usa uma Clean Architecture pragmática:
 
@@ -24,17 +24,11 @@ O projeto hoje usa uma Clean Architecture pragmática:
 
 ## Subindo o projeto
 
-O ambiente oficial do projeto é o Docker com Laravel Sail.
+Siga o [guia de instalação e atualização](docs/setup.md). Na primeira instalação, o Composer precisa instalar as dependências antes de executar `vendor/bin/sail`.
 
-```bash
-cp .env.example .env
-./vendor/bin/sail up -d
-./vendor/bin/sail composer install
-./vendor/bin/sail php artisan key:generate
-./vendor/bin/sail php artisan migrate
-./vendor/bin/sail npm install
-./vendor/bin/sail npm run dev
-```
+O Tasks atende uma organização por instalação, com equipes e categorias definidas por ela. Uma equipe pode representar um departamento, área ou grupo de trabalho. O nome exibido pode ser personalizado via `APP_NAME`, cujo padrão é `Tasks`.
+
+A refatoração preserva os dados existentes com uma migration reversível. Tarefas novas usam o prefixo `TASK-`; códigos antigos continuam válidos. Consulte o guia antes de atualizar uma instalação existente.
 
 ## Comandos úteis
 
@@ -43,9 +37,9 @@ cp .env.example .env
 ./vendor/bin/sail composer install
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
-./vendor/bin/sail php artisan test
+./vendor/bin/sail artisan test
 ./vendor/bin/sail pint --test
-./vendor/bin/sail php artisan route:list
+./vendor/bin/sail artisan route:list
 ```
 
 ## Validação oficial
@@ -59,7 +53,7 @@ Use esta sequência:
 ./vendor/bin/sail composer install
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
-./vendor/bin/sail php artisan test
+./vendor/bin/sail artisan test
 ./vendor/bin/sail pint --test
 ```
 
@@ -73,22 +67,22 @@ Isso significa que:
 
 ## Perfis e autorização
 
-- `admin`: usuário com `secretariat_id = null`
-- `usuário de secretaria`: usuário vinculado a uma `secretariat`
+- `admin`: usuário com `team_id = null`
+- `usuário de equipe`: usuário vinculado a uma `team`
 
 Regras atuais:
 
-- admin acessa áreas administrativas e qualquer painel de ODS;
-- usuário de secretaria não acessa área administrativa;
-- usuário de secretaria só acessa e manipula ODS da própria secretaria;
-- categoria usada em ODS deve pertencer à mesma secretaria.
+- admin acessa áreas administrativas e qualquer painel de tarefas;
+- usuário de equipe não acessa área administrativa;
+- usuário de equipe só acessa e manipula tarefas da própria equipe;
+- categoria usada em uma tarefa deve pertencer à mesma equipe.
 
 A autorização é aplicada em:
 
 - rotas em `routes/web.php`;
 - policies em `app/Policies`;
 - componentes Livewire com `authorize(...)`;
-- casos de uso críticos de `ServiceOrder`, que validam coerência de secretaria, categoria e ordem.
+- casos de uso críticos de `Task`, que validam coerência de equipe, categoria e tarefa.
 
 ## Camadas do projeto
 
@@ -124,11 +118,11 @@ Responsável por:
 
 Exemplos atuais:
 
-- `CreateServiceOrder`
-- `UpdateServiceOrder`
-- `ListServiceOrders`
+- `CreateTask`
+- `UpdateTask`
+- `ListTasks`
 - `SaveCategory`
-- `SaveSecretariat`
+- `SaveTeam`
 
 ### Domain
 
@@ -138,7 +132,7 @@ Arquivos em:
 
 Responsável por:
 
-- enum `ServiceOrderStatus`;
+- enum `TaskStatus`;
 - exceptions de negócio.
 
 ### Infrastructure
@@ -149,9 +143,9 @@ Arquivos em:
 
 Responsável por implementar contratos da `Application` com Eloquent:
 
-- `EloquentServiceOrderRepository`
+- `EloquentTaskRepository`
 - `EloquentCategoryRepository`
-- `EloquentSecretariatRepository`
+- `EloquentTeamRepository`
 
 ### Persistence
 
@@ -167,37 +161,37 @@ Responsável por:
 - casts;
 - scopes simples;
 - factories;
-- transição simples de status no model `ServiceOrder`.
+- transição simples de status no model `Task`.
 
-## Fluxo de ServiceOrder
+## Fluxo de Task
 
 ### Listagem
 
-1. A rota `/secretarias/{secretariat}/ods` valida acesso com policy.
-2. O componente [ServiceOrderManager](./app/Livewire/Secretariat/ServiceOrderManager.php) valida `view` e `viewAny`.
-3. O componente chama `ListServiceOrders`.
-4. O caso de uso usa `ServiceOrderRepository`.
-5. A implementação Eloquent aplica escopo por secretaria, busca e paginação.
+1. A rota `/equipes/{team}/tarefas` valida acesso com policy.
+2. O componente [TaskManager](./app/Livewire/Team/TaskManager.php) valida `view` e `viewAny`.
+3. O componente chama `ListTasks`.
+4. O caso de uso usa `TaskRepository`.
+5. A implementação Eloquent aplica escopo por equipe, busca e paginação.
 
 ### Criação
 
-1. O Livewire monta `CreateServiceOrderData`.
-2. O componente chama `CreateServiceOrder`.
-3. O caso de uso valida a categoria com `EnsureCategoryBelongsToSecretariat`.
-4. O repositório persiste a ODS e o checklist.
-5. O model `ServiceOrder` define o status inicial e gera o código final a partir do `id`.
+1. O Livewire monta `CreateTaskData`.
+2. O componente chama `CreateTask`.
+3. O caso de uso valida a categoria com `EnsureCategoryBelongsToTeam`.
+4. O repositório persiste a Tarefa e o checklist.
+5. O model `Task` define o status inicial e gera o código final a partir do `id`.
 
 ### Edição
 
-1. O Livewire carrega a ODS com `GetServiceOrder`, sempre escopado por secretaria.
-2. O formulário é preenchido com `UpdateServiceOrderData::fromServiceOrder(...)`.
-3. O componente chama `UpdateServiceOrder`.
-4. O caso de uso revalida a categoria da secretaria e atualiza a ODS.
+1. O Livewire carrega a Tarefa com `GetTask`, sempre escopado por equipe.
+2. O formulário é preenchido com `UpdateTaskData::fromTask(...)`.
+3. O componente chama `UpdateTask`.
+4. O caso de uso revalida a categoria da equipe e atualiza a Tarefa.
 
 ### Exclusão
 
-1. O Livewire chama `DeleteServiceOrder`.
-2. O caso de uso usa `GetServiceOrder` para garantir o escopo da secretaria.
+1. O Livewire chama `DeleteTask`.
+2. O caso de uso usa `GetTask` para garantir o escopo da equipe.
 3. A exclusão é `soft delete`.
 
 ## DTOs usados hoje
@@ -210,13 +204,13 @@ Padrões atuais:
 
 Exemplos reais:
 
-- `CreateServiceOrderData`
-- `UpdateServiceOrderData`
+- `CreateTaskData`
+- `UpdateTaskData`
 - `CreateCategoryData`
 - `UpdateCategoryData`
-- `CreateSecretariatData`
-- `UpdateSecretariatData`
-- `ServiceOrderListResult`
+- `CreateTeamData`
+- `UpdateTeamData`
+- `TaskListResult`
 
 ## Como evoluir com segurança
 
@@ -259,7 +253,7 @@ Ao adicionar comportamento crítico:
 
 1. cubra o fluxo principal em `tests/Feature`;
 2. cubra autorização quando houver recurso protegido;
-3. cubra isolamento por secretaria quando a feature tocar dados multi-secretaria;
+3. cubra isolamento por equipe quando a feature tocar dados multi-equipe;
 4. atualize o teste de arquitetura se surgir nova regra estrutural simples de proteger.
 
 ## Qualidade Estática
@@ -272,7 +266,7 @@ O projeto utiliza **Pint** para estilo de código e **Larastan (PHPStan)** para 
 ```
 
 Configurações:
-- `pint.json`: Regras de estilo (Laravel padrão).
+- Pint: regras de estilo padrão do Laravel.
 - `phpstan.neon`: Configuração da análise estática.
 
 ## Testes existentes
@@ -281,16 +275,16 @@ A suíte cobre hoje:
 
 - autenticação;
 - autorização por perfil;
-- acesso por secretaria;
+- acesso por equipe;
 - CRUD administrativo via Livewire;
-- fluxo de ODS;
+- fluxo de tarefas;
 - transição de status;
 - guards de arquitetura.
 
 Rodando tudo:
 
 ```bash
-./vendor/bin/sail php artisan test
+./vendor/bin/sail artisan test
 ```
 
 ## Documentação relacionada

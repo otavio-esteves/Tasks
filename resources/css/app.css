@@ -2,20 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-.ods-reference-font {
+.task-reference-font {
     font-family: "Inter", sans-serif;
 }
 
-.ods-reference-font .custom-scrollbar::-webkit-scrollbar {
+.task-reference-font .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-.ods-reference-font .custom-scrollbar::-webkit-scrollbar-track {
+.task-reference-font .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.ods-reference-font .custom-scrollbar::-webkit-scrollbar-thumb {
+.task-reference-font .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: rgba(71, 85, 105, 0.55);
     border-radius: 9999px;
 }

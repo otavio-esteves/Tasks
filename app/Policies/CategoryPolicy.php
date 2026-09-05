@@ -14,7 +14,7 @@ class CategoryPolicy
 
     public function view(User $user, Category $category): bool
     {
-        return $user->isAdmin() || $user->belongsToSecretariat($category->secretariat_id);
+        return $user->isAdmin() || $user->belongsToTeam($category->team_id);
     }
 
     public function create(User $user): bool

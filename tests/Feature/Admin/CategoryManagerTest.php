@@ -4,7 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Livewire\Admin\CategoryManager;
 use App\Models\Category;
-use App\Models\Secretariat;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -16,10 +16,10 @@ class CategoryManagerTest extends TestCase
 
     public function test_admin_can_create_update_and_delete_category_through_livewire(): void
     {
-        $admin = User::factory()->create(['secretariat_id' => null]);
-        $secretariat = Secretariat::factory()->create();
+        $admin = User::factory()->create(['team_id' => null]);
+        $team = Team::factory()->create();
         $category = Category::factory()->create([
-            'secretariat_id' => $secretariat->id,
+            'team_id' => $team->id,
             'name' => 'Categoria Original',
             'slug' => 'categoria-original',
         ]);
@@ -28,7 +28,7 @@ class CategoryManagerTest extends TestCase
             ->test(CategoryManager::class)
             ->call('create')
             ->set('form.name', 'Nova Categoria')
-            ->set('form.secretariat_id', $secretariat->id)
+            ->set('form.team_id', $team->id)
             ->set('form.description', 'Descricao nova')
             ->call('store')
             ->assertHasNoErrors()
@@ -37,14 +37,14 @@ class CategoryManagerTest extends TestCase
         $this->assertDatabaseHas('categories', [
             'name' => 'Nova Categoria',
             'slug' => 'nova-categoria',
-            'secretariat_id' => $secretariat->id,
+            'team_id' => $team->id,
         ]);
 
         Livewire::actingAs($admin)
             ->test(CategoryManager::class)
             ->call('edit', $category->id)
             ->set('form.name', 'Categoria Atualizada')
-            ->set('form.secretariat_id', $secretariat->id)
+            ->set('form.team_id', $team->id)
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -65,13 +65,13 @@ class CategoryManagerTest extends TestCase
         ]);
     }
 
-    public function test_category_manager_rejects_duplicate_slug_inside_same_secretariat(): void
+    public function test_category_manager_rejects_duplicate_slug_inside_same_team(): void
     {
-        $admin = User::factory()->create(['secretariat_id' => null]);
-        $secretariat = Secretariat::factory()->create();
+        $admin = User::factory()->create(['team_id' => null]);
+        $team = Team::factory()->create();
 
         Category::factory()->create([
-            'secretariat_id' => $secretariat->id,
+            'team_id' => $team->id,
             'name' => 'Iluminacao Publica',
             'slug' => 'iluminacao-publica',
         ]);
@@ -80,20 +80,20 @@ class CategoryManagerTest extends TestCase
             ->test(CategoryManager::class)
             ->call('create')
             ->set('form.name', 'Iluminacao Publica')
-            ->set('form.secretariat_id', $secretariat->id)
+            ->set('form.team_id', $team->id)
             ->call('store')
             ->assertHasErrors(['form.name'])
             ->assertSee('Este nome resulta em um slug ja existente em outra categoria.');
     }
 
-    public function test_same_slug_is_allowed_in_different_secretariats(): void
+    public function test_same_slug_is_allowed_in_different_teams(): void
     {
-        $admin = User::factory()->create(['secretariat_id' => null]);
-        $sec1 = Secretariat::factory()->create();
-        $sec2 = Secretariat::factory()->create();
+        $admin = User::factory()->create(['team_id' => null]);
+        $sec1 = Team::factory()->create();
+        $sec2 = Team::factory()->create();
 
         Category::factory()->create([
-            'secretariat_id' => $sec1->id,
+            'team_id' => $sec1->id,
             'name' => 'Manutencao',
             'slug' => 'manutencao',
         ]);
@@ -102,13 +102,13 @@ class CategoryManagerTest extends TestCase
             ->test(CategoryManager::class)
             ->call('create')
             ->set('form.name', 'Manutencao')
-            ->set('form.secretariat_id', $sec2->id)
+            ->set('form.team_id', $sec2->id)
             ->call('store')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('categories', [
             'name' => 'Manutencao',
-            'secretariat_id' => $sec2->id,
+            'team_id' => $sec2->id,
         ]);
     }
 }

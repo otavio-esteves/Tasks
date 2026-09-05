@@ -6,7 +6,7 @@ use App\Application\Categories\DeleteCategory;
 use App\Application\Categories\GetCategory;
 use App\Application\Categories\Queries\ListCategories;
 use App\Application\Categories\SaveCategory;
-use App\Application\Secretariats\Queries\ListSecretariatOptions;
+use App\Application\Teams\Queries\ListTeamOptions;
 use App\Domain\Categories\Exceptions\CategoryNotFound;
 use App\Domain\Categories\Exceptions\CategorySlugAlreadyExists;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
@@ -37,13 +37,13 @@ class CategoryManager extends Component
         $this->resetPage();
     }
 
-    public function render(ListCategories $listCategories, ListSecretariatOptions $listSecretariats)
+    public function render(ListCategories $listCategories, ListTeamOptions $listTeams)
     {
         $this->authorize('viewAny', Category::class);
 
         return view('livewire.admin.category-manager', [
             'categories' => $listCategories->handle($this->search, 10),
-            'secretariats' => $listSecretariats->handle(),
+            'teams' => $listTeams->handle(),
         ])->layout('layouts.app');
     }
 

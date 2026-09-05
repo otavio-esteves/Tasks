@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property int|null $team_id
+ */
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -23,7 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'secretariat_id',
+        'team_id',
     ];
 
     /**
@@ -49,18 +52,18 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
-    public function secretariat(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Secretariat::class);
+        return $this->belongsTo(Team::class);
     }
 
     public function isAdmin(): bool
     {
-        return $this->secretariat_id === null;
+        return $this->team_id === null;
     }
 
-    public function belongsToSecretariat(int $secretariatId): bool
+    public function belongsToTeam(int $teamId): bool
     {
-        return $this->secretariat_id === $secretariatId;
+        return $this->team_id === $teamId;
     }
 }

@@ -77,7 +77,7 @@ Antes de implementar qualquer tarefa:
 
 ## Regras arquiteturais obrigatórias
 
-Considere [docs/architecture-guidelines.md](/home/esteves/Projects/laravel-server/html/docs/architecture-guidelines.md:1) como a referência oficial de arquitetura do projeto.
+Considere [docs/architecture-guidelines.md](docs/architecture-guidelines.md) como a referência oficial de arquitetura do projeto.
 
 Resumo operacional:
 
@@ -110,7 +110,7 @@ Direção de dependência:
 
 Convenções obrigatórias:
 
-- use cases com nomes verbais e explícitos, por exemplo `CreateServiceOrder`, `UpdateServiceOrder`, `ListServiceOrders`;
+- use cases com nomes verbais e explícitos, por exemplo `CreateTask`, `UpdateTask`, `ListTasks`;
 - DTOs na Application com nomes como `*Data`, `*Input`, `*Output` ou `*Result`;
 - exceptions de domínio no Domain, com nomes semânticos e sem detalhe técnico;
 - policies são a camada oficial de autorização de acesso;
@@ -525,7 +525,7 @@ O front-end deve ter aparência administrativa, limpa, sóbria e profissional.
 
 Evite estilo excessivamente arredondado, infantil ou “fofinho”.
 
-A interface deve parecer um sistema de gestão pública/administrativa.
+A interface deve parecer um sistema de gestão organizacional.
 
 ## Regras visuais obrigatórias
 
@@ -683,7 +683,7 @@ Preste atenção em:
 - XSS em Blade;
 - CSRF;
 - permissões por usuário;
-- acesso indevido a recursos de outra secretaria/órgão/usuário.
+- acesso indevido a recursos de outra equipe/organização/usuário.
 
 ## Blade
 
@@ -742,8 +742,8 @@ Quando solicitado a criar mensagem de commit, use mensagens claras.
 Formato recomendado:
 
 ```text
-feat: adiciona checklist às ordens de serviço
-fix: corrige validação de formulário de ODS
+feat: adiciona checklist às tarefas
+fix: corrige validação de formulário de Tarefa
 refactor: reorganiza componentes do dashboard
 style: ajusta padrão visual do front-end
 test: adiciona testes para criação de checklist

@@ -9,30 +9,30 @@ abstract readonly class CategoryMutationData
 {
     public function __construct(
         public string $name,
-        public int $secretariatId,
+        public int $teamId,
         public ?string $description,
     ) {}
 
     /**
-     * @param  array{name:string,secretariat_id:int|string,description?:string|null}  $data
+     * @param  array{name:string,team_id:int|string,description?:string|null}  $data
      */
     public static function fromArray(array $data): static
     {
         return new static(
             name: trim($data['name']),
-            secretariatId: (int) $data['secretariat_id'],
+            teamId: (int) $data['team_id'],
             description: self::normalizeNullableString($data['description'] ?? null),
         );
     }
 
     /**
-     * @return array{name:string,secretariat_id:int,description:string|null}
+     * @return array{name:string,team_id:int,description:string|null}
      */
     public function toPersistenceArray(): array
     {
         return [
             'name' => $this->name,
-            'secretariat_id' => $this->secretariatId,
+            'team_id' => $this->teamId,
             'description' => $this->description,
         ];
     }

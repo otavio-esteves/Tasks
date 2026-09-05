@@ -3,7 +3,7 @@
 namespace Tests\Unit\Auth;
 
 use App\Application\Auth\ResolveUserHomeRoute;
-use App\Models\Secretariat;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -22,20 +22,20 @@ class ResolveUserHomeRouteTest extends TestCase
         $this->assertSame([], $target->parameters);
     }
 
-    public function test_secretariat_user_is_resolved_to_own_service_order_route(): void
+    public function test_team_user_is_resolved_to_own_task_route(): void
     {
-        $secretariat = Secretariat::factory()->create();
-        $user = User::factory()->forSecretariat($secretariat)->create();
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
 
         $target = app(ResolveUserHomeRoute::class)->handle($user);
 
-        $this->assertSame('secretariats.ods', $target->routeName);
-        $this->assertSame(['secretariat' => $secretariat->id], $target->parameters);
+        $this->assertSame('teams.tasks', $target->routeName);
+        $this->assertSame(['team' => $team->id], $target->parameters);
     }
 
-    public function test_user_without_secretariat_receives_predictable_dashboard_route(): void
+    public function test_user_without_team_receives_predictable_dashboard_route(): void
     {
-        $user = User::factory()->create(['secretariat_id' => null]);
+        $user = User::factory()->create(['team_id' => null]);
 
         $target = app(ResolveUserHomeRoute::class)->handle($user);
 

@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Secretariat;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -47,14 +47,14 @@ class UserFactory extends Factory
     public function admin(): static
     {
         return $this->state(fn () => [
-            'secretariat_id' => null,
+            'team_id' => null,
         ]);
     }
 
-    public function forSecretariat(Secretariat $secretariat): static
+    public function forTeam(Team $team): static
     {
         return $this->state(fn () => [
-            'secretariat_id' => $secretariat->id,
+            'team_id' => $team->id,
         ]);
     }
 }

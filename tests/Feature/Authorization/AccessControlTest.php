@@ -3,8 +3,8 @@
 namespace Tests\Feature\Authorization;
 
 use App\Livewire\Admin\CategoryManager;
-use App\Livewire\Admin\SecretariatManager;
-use App\Models\Secretariat;
+use App\Livewire\Admin\TeamManager;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -16,27 +16,27 @@ class AccessControlTest extends TestCase
 
     public function test_guest_is_redirected_to_login_for_protected_routes(): void
     {
-        $secretariat = Secretariat::factory()->create();
+        $team = Team::factory()->create();
 
         $this->get(route('dashboard'))
             ->assertRedirect(route('login'));
 
-        $this->get(route('admin.secretariats'))
+        $this->get(route('admin.teams'))
             ->assertRedirect(route('login'));
 
         $this->get(route('admin.categories'))
             ->assertRedirect(route('login'));
 
-        $this->get(route('secretariats.ods', $secretariat))
+        $this->get(route('teams.tasks', $team))
             ->assertRedirect(route('login'));
     }
 
     public function test_admin_can_access_admin_routes(): void
     {
-        $admin = User::factory()->create(['secretariat_id' => null]);
+        $admin = User::factory()->create(['team_id' => null]);
 
         $this->actingAs($admin)
-            ->get(route('admin.secretariats'))
+            ->get(route('admin.teams'))
             ->assertOk();
 
         $this->actingAs($admin)
@@ -44,13 +44,13 @@ class AccessControlTest extends TestCase
             ->assertOk();
     }
 
-    public function test_secretariat_user_cannot_access_admin_routes(): void
+    public function test_team_user_cannot_access_admin_routes(): void
     {
-        $secretariat = Secretariat::factory()->create();
-        $user = User::factory()->create(['secretariat_id' => $secretariat->id]);
+        $team = Team::factory()->create();
+        $user = User::factory()->create(['team_id' => $team->id]);
 
         $this->actingAs($user)
-            ->get(route('admin.secretariats'))
+            ->get(route('admin.teams'))
             ->assertForbidden();
 
         $this->actingAs($user)
@@ -58,13 +58,13 @@ class AccessControlTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_secretariat_user_cannot_mount_admin_livewire_components(): void
+    public function test_team_user_cannot_mount_admin_livewire_components(): void
     {
-        $secretariat = Secretariat::factory()->create();
-        $user = User::factory()->create(['secretariat_id' => $secretariat->id]);
+        $team = Team::factory()->create();
+        $user = User::factory()->create(['team_id' => $team->id]);
 
         Livewire::actingAs($user)
-            ->test(SecretariatManager::class)
+            ->test(TeamManager::class)
             ->assertForbidden();
 
         Livewire::actingAs($user)
@@ -72,28 +72,28 @@ class AccessControlTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_secretariat_user_can_access_only_own_service_order_panel(): void
+    public function test_team_user_can_access_only_own_task_panel(): void
     {
-        $ownSecretariat = Secretariat::factory()->create();
-        $otherSecretariat = Secretariat::factory()->create();
-        $user = User::factory()->create(['secretariat_id' => $ownSecretariat->id]);
+        $ownTeam = Team::factory()->create();
+        $otherTeam = Team::factory()->create();
+        $user = User::factory()->create(['team_id' => $ownTeam->id]);
 
         $this->actingAs($user)
-            ->get(route('secretariats.ods', $ownSecretariat))
+            ->get(route('teams.tasks', $ownTeam))
             ->assertOk();
 
         $this->actingAs($user)
-            ->get(route('secretariats.ods', $otherSecretariat))
+            ->get(route('teams.tasks', $otherTeam))
             ->assertForbidden();
     }
 
-    public function test_admin_can_access_any_service_order_panel(): void
+    public function test_admin_can_access_any_task_panel(): void
     {
-        $admin = User::factory()->create(['secretariat_id' => null]);
-        $secretariat = Secretariat::factory()->create();
+        $admin = User::factory()->create(['team_id' => null]);
+        $team = Team::factory()->create();
 
         $this->actingAs($admin)
-            ->get(route('secretariats.ods', $secretariat))
+            ->get(route('teams.tasks', $team))
             ->assertOk();
     }
 }

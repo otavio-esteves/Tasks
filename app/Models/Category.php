@@ -9,21 +9,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $team_id
+ */
 class Category extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
-    protected $fillable = ['secretariat_id', 'name', 'slug', 'description'];
+    protected $fillable = ['team_id', 'name', 'slug', 'description'];
 
-    public function secretariat(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Secretariat::class);
+        return $this->belongsTo(Team::class);
     }
 
-    public function serviceOrders(): HasMany
+    public function tasks(): HasMany
     {
-        return $this->hasMany(ServiceOrder::class);
+        return $this->hasMany(Task::class);
     }
 
     public function scopeSearch(Builder $query, string $search): Builder

@@ -52,8 +52,8 @@ class ArchitectureTest extends TestCase
     {
         $filesToGuard = [
             app_path('Livewire/Admin/CategoryManager.php'),
-            app_path('Livewire/Admin/SecretariatManager.php'),
-            app_path('Livewire/Secretariat/ServiceOrderManager.php'),
+            app_path('Livewire/Admin/TeamManager.php'),
+            app_path('Livewire/Team/TaskManager.php'),
         ];
 
         $forbiddenFragments = [
@@ -84,8 +84,8 @@ class ArchitectureTest extends TestCase
     {
         $filesToGuard = [
             app_path('Livewire/Admin/CategoryManager.php'),
-            app_path('Livewire/Admin/SecretariatManager.php'),
-            app_path('Livewire/Secretariat/ServiceOrderManager.php'),
+            app_path('Livewire/Admin/TeamManager.php'),
+            app_path('Livewire/Team/TaskManager.php'),
         ];
 
         foreach ($filesToGuard as $file) {
@@ -93,8 +93,8 @@ class ArchitectureTest extends TestCase
                 $file,
                 [
                     'new Category(',
-                    'new Secretariat(',
-                    'new ServiceOrder(',
+                    'new Team(',
+                    'new Task(',
                 ],
             );
         }
@@ -104,44 +104,44 @@ class ArchitectureTest extends TestCase
     {
         $expectations = [
             [
-                'use_case' => app_path('Application/ServiceOrders/CreateServiceOrder.php'),
+                'use_case' => app_path('Application/Tasks/CreateTask.php'),
                 'tests' => [
-                    base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php'),
-                    base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+                    base_path('tests/Feature/Tasks/TaskDomainTest.php'),
+                    base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/UpdateServiceOrder.php'),
+                'use_case' => app_path('Application/Tasks/UpdateTask.php'),
                 'tests' => [
-                    base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php'),
-                    base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+                    base_path('tests/Feature/Tasks/TaskDomainTest.php'),
+                    base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/DeleteServiceOrder.php'),
+                'use_case' => app_path('Application/Tasks/DeleteTask.php'),
                 'tests' => [
-                    base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php'),
-                    base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+                    base_path('tests/Feature/Tasks/TaskDomainTest.php'),
+                    base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/GetServiceOrder.php'),
+                'use_case' => app_path('Application/Tasks/GetTask.php'),
                 'tests' => [
-                    base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php'),
-                    base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+                    base_path('tests/Feature/Tasks/TaskDomainTest.php'),
+                    base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/Queries/ListServiceOrders.php'),
+                'use_case' => app_path('Application/Tasks/Queries/ListTasks.php'),
                 'tests' => [
-                    base_path('tests/Feature/Listings/ServiceOrderListingTest.php'),
+                    base_path('tests/Feature/Listings/TaskListingTest.php'),
                 ],
             ],
             [
-                'use_case' => app_path('Application/ServiceOrders/Validators/EnsureCategoryBelongsToSecretariat.php'),
+                'use_case' => app_path('Application/Tasks/Validators/EnsureCategoryBelongsToTeam.php'),
                 'tests' => [
-                    base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php'),
-                    base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+                    base_path('tests/Feature/Tasks/TaskDomainTest.php'),
+                    base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
                 ],
             ],
             [
@@ -151,9 +151,9 @@ class ArchitectureTest extends TestCase
                 ],
             ],
             [
-                'use_case' => app_path('Application/Secretariats/SaveSecretariat.php'),
+                'use_case' => app_path('Application/Teams/SaveTeam.php'),
                 'tests' => [
-                    base_path('tests/Feature/Admin/SecretariatManagerTest.php'),
+                    base_path('tests/Feature/Admin/TeamManagerTest.php'),
                 ],
             ],
         ];
@@ -169,13 +169,13 @@ class ArchitectureTest extends TestCase
 
     public function test_status_transition_rules_have_dedicated_feature_coverage(): void
     {
-        $testFile = base_path('tests/Feature/ServiceOrders/ServiceOrderDomainTest.php');
+        $testFile = base_path('tests/Feature/Tasks/TaskDomainTest.php');
 
         $this->assertFileExists($testFile);
         $this->assertFileContainsAll(
             $testFile,
             [
-                'test_service_order_status_transitions_are_flexible',
+                'test_task_status_transitions_are_flexible',
                 'changeStatus(',
             ],
         );
@@ -185,7 +185,7 @@ class ArchitectureTest extends TestCase
     {
         $files = [
             base_path('tests/Feature/Authorization/AccessControlTest.php'),
-            base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+            base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
         ];
 
         foreach ($files as $file) {
@@ -197,16 +197,16 @@ class ArchitectureTest extends TestCase
             [
                 'assertForbidden()',
                 "assertRedirect(route('login'))",
-                "route('secretariats.ods'",
+                "route('teams.tasks'",
             ],
         );
 
         $this->assertFileContainsAll(
-            base_path('tests/Feature/Authorization/ServiceOrderAuthorizationTest.php'),
+            base_path('tests/Feature/Authorization/TaskAuthorizationTest.php'),
             [
                 'Livewire::actingAs(',
                 'assertSee(',
-                'A categoria selecionada nao pertence a esta secretaria.',
+                'A categoria selecionada nao pertence a esta equipe.',
                 'assertDatabaseMissing(',
             ],
         );
@@ -216,8 +216,8 @@ class ArchitectureTest extends TestCase
     {
         $expectations = [
             app_path('Models/Category.php') => app_path('Policies/CategoryPolicy.php'),
-            app_path('Models/Secretariat.php') => app_path('Policies/SecretariatPolicy.php'),
-            app_path('Models/ServiceOrder.php') => app_path('Policies/ServiceOrderPolicy.php'),
+            app_path('Models/Team.php') => app_path('Policies/TeamPolicy.php'),
+            app_path('Models/Task.php') => app_path('Policies/TaskPolicy.php'),
         ];
 
         foreach ($expectations as $model => $policy) {

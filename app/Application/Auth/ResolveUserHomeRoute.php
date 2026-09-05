@@ -9,10 +9,10 @@ class ResolveUserHomeRoute
 {
     public function handle(User $user): RedirectTargetData
     {
-        if ($user->secretariat_id !== null) {
+        if ($user->team_id !== null) {
             return new RedirectTargetData(
-                routeName: 'secretariats.ods',
-                parameters: ['secretariat' => $user->secretariat_id],
+                routeName: 'teams.tasks',
+                parameters: ['team' => $user->team_id],
             );
         }
 

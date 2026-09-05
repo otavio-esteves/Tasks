@@ -3,11 +3,11 @@
 namespace Tests\Unit;
 
 use App\Application\Categories\Contracts\CategoryRepository;
-use App\Application\Secretariats\Contracts\SecretariatRepository;
-use App\Application\ServiceOrders\Contracts\ServiceOrderRepository;
+use App\Application\Tasks\Contracts\TaskRepository;
+use App\Application\Teams\Contracts\TeamRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentCategoryRepository;
-use App\Infrastructure\Persistence\Eloquent\EloquentSecretariatRepository;
-use App\Infrastructure\Persistence\Eloquent\EloquentServiceOrderRepository;
+use App\Infrastructure\Persistence\Eloquent\EloquentTaskRepository;
+use App\Infrastructure\Persistence\Eloquent\EloquentTeamRepository;
 use Tests\TestCase;
 
 class ContainerBindingTest extends TestCase
@@ -20,13 +20,13 @@ class ContainerBindingTest extends TestCase
         );
 
         $this->assertInstanceOf(
-            EloquentSecretariatRepository::class,
-            app(SecretariatRepository::class)
+            EloquentTeamRepository::class,
+            app(TeamRepository::class)
         );
 
         $this->assertInstanceOf(
-            EloquentServiceOrderRepository::class,
-            app(ServiceOrderRepository::class)
+            EloquentTaskRepository::class,
+            app(TaskRepository::class)
         );
     }
 }

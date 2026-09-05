@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Secretariat;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -18,18 +18,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $nomeSecretaria = 'Secretaria de Urbanismo';
+        $nomeEquipe = 'Operações';
 
-        $secretaria = Secretariat::updateOrCreate(
-            ['name' => $nomeSecretaria],
-            ['slug' => Str::slug($nomeSecretaria)]
+        $equipe = Team::updateOrCreate(
+            ['name' => $nomeEquipe],
+            ['slug' => Str::slug($nomeEquipe)]
         );
 
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'secretariat_id' => $secretaria->id,
+            'team_id' => $equipe->id,
             'email_verified_at' => now(),
         ]);
     }

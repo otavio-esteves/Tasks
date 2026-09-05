@@ -12,8 +12,8 @@ Local:
 
 Conteúdo atual:
 
-- `ServiceOrderStatus`
-- exceptions de negócio de `ServiceOrder`, `Category` e `Secretariat`
+- `TaskStatus`
+- exceptions de negócio de `Task`, `Category` e `Team`
 
 Regras:
 
@@ -36,12 +36,12 @@ Conteúdo atual:
 
 Exemplos atuais:
 
-- `CreateServiceOrder`
-- `UpdateServiceOrder`
-- `GetServiceOrder`
-- `ListServiceOrders`
+- `CreateTask`
+- `UpdateTask`
+- `GetTask`
+- `ListTasks`
 - `SaveCategory`
-- `SaveSecretariat`
+- `SaveTeam`
 
 Regras:
 
@@ -61,9 +61,9 @@ Conteúdo atual:
 
 Exemplos:
 
-- `EloquentServiceOrderRepository`
+- `EloquentTaskRepository`
 - `EloquentCategoryRepository`
-- `EloquentSecretariatRepository`
+- `EloquentTeamRepository`
 
 Regras:
 
@@ -135,14 +135,14 @@ Padrão:
 
 Exemplos atuais:
 
-- `CreateServiceOrder`
-- `UpdateServiceOrder`
-- `DeleteServiceOrder`
-- `GetServiceOrder`
-- `ListServiceOrders`
+- `CreateTask`
+- `UpdateTask`
+- `DeleteTask`
+- `GetTask`
+- `ListTasks`
 - `SaveCategory`
 - `DeleteCategory`
-- `SaveSecretariat`
+- `SaveTeam`
 
 Evitar:
 
@@ -163,14 +163,14 @@ Padrões já adotados no código:
 
 Exemplos reais:
 
-- `CreateServiceOrderData`
-- `UpdateServiceOrderData`
+- `CreateTaskData`
+- `UpdateTaskData`
 - `CreateCategoryData`
 - `UpdateCategoryData`
-- `CreateSecretariatData`
-- `UpdateSecretariatData`
+- `CreateTeamData`
+- `UpdateTeamData`
 - `ChecklistItemData`
-- `ServiceOrderListResult`
+- `TaskListResult`
 
 Regras:
 
@@ -186,13 +186,13 @@ As exceptions de negócio ficam em `app/Domain/**/Exceptions`.
 
 Exemplos atuais:
 
-- `InvalidServiceOrderCategory`
-- `InvalidServiceOrderStatusTransition`
-- `ServiceOrderNotFound`
+- `InvalidTaskCategory`
+- `InvalidTaskStatusTransition`
+- `TaskNotFound`
 - `CategorySlugAlreadyExists`
 - `CategoryNotFound`
-- `SecretariatNameAlreadyExists`
-- `SecretariatNotFound`
+- `TeamNameAlreadyExists`
+- `TeamNotFound`
 
 Regras:
 
@@ -205,55 +205,55 @@ No Livewire, o projeto hoje usa o trait:
 
 - `App\Livewire\Concerns\InteractsWithFriendlyExceptions`
 
-## 6. Fluxo real de ServiceOrder
+## 6. Fluxo real de Task
 
 ### Entrada
 
-- rota protegida por `auth`, `verified` e `can('view', 'secretariat')`;
-- `ServiceOrderManager` valida acesso adicional com policy.
+- rota protegida por `auth`, `verified` e `can('view', 'team')`;
+- `TaskManager` valida acesso adicional com policy.
 
 ### Listagem
 
-- `ServiceOrderManager` chama `ListServiceOrders`;
-- `ListServiceOrders` depende de `ServiceOrderRepository`;
-- `EloquentServiceOrderRepository` aplica busca, paginação e resumo por secretaria.
+- `TaskManager` chama `ListTasks`;
+- `ListTasks` depende de `TaskRepository`;
+- `EloquentTaskRepository` aplica busca, paginação e resumo por equipe.
 
 ### Criação
 
-- `ServiceOrderManager` cria `CreateServiceOrderData`;
-- `CreateServiceOrder` valida categoria com `EnsureCategoryBelongsToSecretariat`;
-- repositório persiste ODS e checklist.
+- `TaskManager` cria `CreateTaskData`;
+- `CreateTask` valida categoria com `EnsureCategoryBelongsToTeam`;
+- repositório persiste Tarefa e checklist.
 
 ### Edição
 
-- `GetServiceOrder` carrega sempre por secretaria;
-- `UpdateServiceOrderData::fromServiceOrder(...)` preenche a tela;
-- `UpdateServiceOrder` revalida a categoria e atualiza o registro.
+- `GetTask` carrega sempre por equipe;
+- `UpdateTaskData::fromTask(...)` preenche a tela;
+- `UpdateTask` revalida a categoria e atualiza o registro.
 
 ### Exclusão
 
-- `DeleteServiceOrder` depende de `GetServiceOrder` para garantir escopo por secretaria.
+- `DeleteTask` depende de `GetTask` para garantir escopo por equipe.
 
 ### Status
 
-- `ServiceOrder` usa o enum `ServiceOrderStatus`;
+- `Task` usa o enum `TaskStatus`;
 - transição simples fica no model com `changeStatus(...)`;
-- cobertura existe em `tests/Feature/ServiceOrders/ServiceOrderDomainTest.php`.
+- cobertura existe em `tests/Feature/Tasks/TaskDomainTest.php`.
 
 ## 7. Policies e autorização
 
 Policies existentes:
 
 - `CategoryPolicy`
-- `SecretariatPolicy`
-- `ServiceOrderPolicy`
+- `TeamPolicy`
+- `TaskPolicy`
 
 Regras atuais:
 
 - rotas protegidas usam `can(...)` quando aplicável;
 - componentes Livewire usam `authorize(...)`;
 - autorização de acesso não depende só de botão escondido;
-- casos de uso críticos de ODS ainda validam coerência de secretaria/categoria/registro.
+- casos de uso críticos de Tarefa ainda validam coerência de equipe/categoria/registro.
 
 ## 8. Como criar uma nova feature
 
@@ -312,7 +312,7 @@ Coberturas atuais:
 - ausência de queries Eloquent diretas nos Livewire críticos;
 - ausência de instanciação direta de models críticos nos Livewire protegidos;
 - existência de coverage para use cases críticos;
-- existência de coverage para criação, atualização, autorização, regras de secretaria, regras de categoria e transição de status;
+- existência de coverage para criação, atualização, autorização, regras de equipe, regras de categoria e transição de status;
 - existência de policies para entidades protegidas.
 
 Limitações:
@@ -326,20 +326,12 @@ Limitações:
 
 ### Projeto
 
-```bash
-cp .env.example .env
-./vendor/bin/sail up -d
-./vendor/bin/sail composer install
-./vendor/bin/sail php artisan key:generate
-./vendor/bin/sail php artisan migrate
-./vendor/bin/sail npm install
-./vendor/bin/sail npm run dev
-```
+Consulte [Instalação e validação](setup.md) para preparar o Sail e atualizar bancos existentes.
 
 ### Testes
 
 ```bash
-./vendor/bin/sail php artisan test
-./vendor/bin/sail php artisan test tests/Unit/ArchitectureTest.php
-./vendor/bin/sail php artisan test tests/Feature/ServiceOrders/ServiceOrderDomainTest.php
+./vendor/bin/sail artisan test
+./vendor/bin/sail artisan test tests/Unit/ArchitectureTest.php
+./vendor/bin/sail artisan test tests/Feature/Tasks/TaskDomainTest.php
 ```

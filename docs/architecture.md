@@ -29,12 +29,12 @@ Responsável por:
 
 Exemplos atuais:
 
-- `CreateServiceOrder`
-- `UpdateServiceOrder`
-- `GetServiceOrder`
-- `ListServiceOrders`
+- `CreateTask`
+- `UpdateTask`
+- `GetTask`
+- `ListTasks`
 - `ListCategories`
-- `ListSecretariats`
+- `ListTeams`
 
 ### `app/Domain`
 
@@ -47,8 +47,8 @@ Responsável por:
 
 Exemplos atuais:
 
-- `ServiceOrderStatus`
-- exceções de `ServiceOrder`
+- `TaskStatus`
+- exceções de `Task`
 
 ### `app/Models`
 
@@ -62,21 +62,21 @@ Responsável por:
 
 Exemplo atual:
 
-- `ServiceOrder` concentra geração do código final a partir do `id` e transição explícita de status
+- `Task` concentra geração do código final a partir do `id` e transição explícita de status
 
 ### `app/Policies`
 
 Responsável por:
 
 - autorização explícita
-- isolamento entre admin e usuários de secretaria
+- isolamento entre admin e usuários de equipe
 
 ## Onde ficam as regras de domínio
 
 As regras devem ficar no ponto mais próximo da invariável que protegem.
 
-- regra de transição de status: domínio/modelo de `ServiceOrder`
-- regra de categoria pertencer à mesma secretaria: caso de uso de `ServiceOrder`
+- regra de transição de status: domínio/modelo de `Task`
+- regra de categoria pertencer à mesma equipe: caso de uso de `Task`
 - regra de acesso a recursos: `Policies`
 
 Evitar colocar essas regras:
@@ -115,4 +115,4 @@ Critério prático:
 
 - A arquitetura segue uma separação clara onde `Application` depende de contratos e `Infrastructure` fornece a implementação Eloquent.
 - Alguns documentos antigos do projeto podem descrever roadmap futuro e divergir do estado atual do código; considere o código e o README como fontes de verdade.
-- O checklist de ODS está funcional para persistência básica; novas regras de validação do checklist podem ser adicionadas futuramente.
+- O checklist de Tarefa está funcional para persistência básica; novas regras de validação do checklist podem ser adicionadas futuramente.

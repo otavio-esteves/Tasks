@@ -20,7 +20,7 @@ class SaveCategory
         $category = $categoryId === null ? null : $this->getCategory->handle($categoryId);
         $slug = Str::slug($data->name);
 
-        if ($this->categories->slugExistsForSecretariat($data->secretariatId, $slug, $category?->id)) {
+        if ($this->categories->slugExistsForTeam($data->teamId, $slug, $category?->id)) {
             throw new CategorySlugAlreadyExists;
         }
 

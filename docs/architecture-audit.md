@@ -18,30 +18,30 @@ Também existe proteção automatizada básica contra regressões arquiteturais 
 
 ## 2. Correções realizadas
 
-### 2.1. Fluxo de `ServiceOrder` desacoplado de Eloquent na camada de aplicação
+### 2.1. Fluxo de `Task` desacoplado de Eloquent na camada de aplicação
 
 Corrigido.
 
 Situação atual:
 
-- `CreateServiceOrder`, `UpdateServiceOrder`, `GetServiceOrder`, `ListServiceOrders` e `DeleteServiceOrder` dependem de `ServiceOrderRepository`;
+- `CreateTask`, `UpdateTask`, `GetTask`, `ListTasks` e `DeleteTask` dependem de `TaskRepository`;
 - validação de categoria depende de `CategoryRepository`;
 - implementações concretas vivem em `app/Infrastructure/Persistence/Eloquent`.
 
 Impacto:
 
 - menor acoplamento da `Application` com Eloquent;
-- centralização do escopo por secretaria;
+- centralização do escopo por equipe;
 - regras críticas mais testáveis.
 
-### 2.2. Regra “categoria pertence à secretaria” centralizada
+### 2.2. Regra “categoria pertence à equipe” centralizada
 
 Corrigido.
 
 Situação atual:
 
-- a regra foi extraída para `EnsureCategoryBelongsToSecretariat`;
-- criação e edição de ODS usam a mesma validação.
+- a regra foi extraída para `EnsureCategoryBelongsToTeam`;
+- criação e edição de Tarefa usam a mesma validação.
 
 ### 2.3. Módulos administrativos tirados de persistência direta no Livewire
 
@@ -49,12 +49,12 @@ Corrigido.
 
 Situação anterior:
 
-- `CategoryManager` e `SecretariatManager` persistiam direto com Eloquent.
+- `CategoryManager` e `TeamManager` persistiam direto com Eloquent.
 
 Situação atual:
 
 - `CategoryManager` usa `SaveCategory`, `GetCategory` e `DeleteCategory`;
-- `SecretariatManager` usa `SaveSecretariat`, `GetSecretariat` e `DeleteSecretariat`;
+- `TeamManager` usa `SaveTeam`, `GetTeam` e `DeleteTeam`;
 - persistência foi movida para contratos e repositórios Eloquent.
 
 ### 2.4. DTOs padronizados e tipados
@@ -64,7 +64,7 @@ Corrigido.
 Situação atual:
 
 - DTOs de mutação seguem padrão `Create...Data` e `Update...Data`;
-- `ServiceOrder` usa `ChecklistItemData` em vez de checklist anônimo trafegando internamente pela `Application`;
+- `Task` usa `ChecklistItemData` em vez de checklist anônimo trafegando internamente pela `Application`;
 - os DTOs são `readonly`.
 
 ### 2.5. Tratamento de exceptions padronizado na UI
@@ -84,8 +84,8 @@ Situação atual:
 
 - rotas usam middleware e `can(...)`;
 - components Livewire usam `authorize(...)`;
-- ODS continua protegida por escopo de secretaria no caso de uso e no repositório;
-- testes cobrem rota, ação Livewire, admin, usuário de secretaria e convidado.
+- Tarefa continua protegida por escopo de equipe no caso de uso e no repositório;
+- testes cobrem rota, ação Livewire, admin, usuário de equipe e convidado.
 
 ### 2.7. Models revisados
 
@@ -95,16 +95,16 @@ Situação atual:
 
 - relacionamentos tipados;
 - scopes pequenos;
-- `ServiceOrder` mantém enum e transição simples de status;
+- `Task` mantém enum e transição simples de status;
 - factories foram ajustadas para facilitar testes.
 
 ## 3. O que continua intencionalmente simples
 
 Nem tudo foi abstraído, por decisão pragmática:
 
-- `ServiceOrder` ainda gera o código e controla a transição simples de status no model;
-- `User::isAdmin()` e `User::belongsToSecretariat()` continuam no model por serem regras pequenas e estáveis;
-- `ServiceOrderManager` ainda concentra estado de tela e pequenas regras de checklist estritamente de UI.
+- `Task` ainda gera o código e controla a transição simples de status no model;
+- `User::isAdmin()` e `User::belongsToTeam()` continuam no model por serem regras pequenas e estáveis;
+- `TaskManager` ainda concentra estado de tela e pequenas regras de checklist estritamente de UI.
 
 Esses pontos não foram movidos porque hoje não configuram regra complexa de aplicação.
 
@@ -118,7 +118,7 @@ As limitações abaixo ainda existem ou não foram atacadas porque não eram nec
 
 ## 5. Fonte oficial para evolução
 
-Para evoluir o projeto com segurança, use nesta ordem:
+Para evoluir o projeto com segurança, use nesta tarefa:
 
 1. `README.md`
 2. `docs/architecture-guidelines.md`
@@ -130,11 +130,11 @@ Para evoluir o projeto com segurança, use nesta ordem:
 No estado documentado aqui, a suíte completa passa com:
 
 ```bash
-./vendor/bin/sail php artisan test
+./vendor/bin/sail artisan test
 ```
 
 Os testes de arquitetura rodam com:
 
 ```bash
-./vendor/bin/sail php artisan test tests/Unit/ArchitectureTest.php
+./vendor/bin/sail artisan test tests/Unit/ArchitectureTest.php
 ```

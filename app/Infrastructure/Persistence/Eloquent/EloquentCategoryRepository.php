@@ -9,18 +9,18 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class EloquentCategoryRepository implements CategoryRepository
 {
-    public function belongsToSecretariat(int $categoryId, int $secretariatId): bool
+    public function belongsToTeam(int $categoryId, int $teamId): bool
     {
         return Category::query()
             ->whereKey($categoryId)
-            ->where('secretariat_id', $secretariatId)
+            ->where('team_id', $teamId)
             ->exists();
     }
 
     public function paginate(string $search = '', int $perPage = 10): LengthAwarePaginator
     {
         return Category::query()
-            ->with('secretariat')
+            ->with('team')
             ->search($search)
             ->latest()
             ->paginate($perPage);
@@ -31,10 +31,10 @@ class EloquentCategoryRepository implements CategoryRepository
         return Category::query()->find($categoryId);
     }
 
-    public function slugExistsForSecretariat(int $secretariatId, string $slug, ?int $ignoreCategoryId = null): bool
+    public function slugExistsForTeam(int $teamId, string $slug, ?int $ignoreCategoryId = null): bool
     {
         return Category::query()
-            ->where('secretariat_id', $secretariatId)
+            ->where('team_id', $teamId)
             ->where('slug', $slug)
             ->when($ignoreCategoryId !== null, fn ($query) => $query->where('id', '!=', $ignoreCategoryId))
             ->exists();

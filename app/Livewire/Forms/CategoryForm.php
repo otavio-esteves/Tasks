@@ -16,8 +16,8 @@ class CategoryForm extends Form
     #[Validate('required|min:3')]
     public string $name = '';
 
-    #[Validate('required|exists:secretariats,id')]
-    public string|int|null $secretariat_id = '';
+    #[Validate('required|exists:teams,id')]
+    public string|int|null $team_id = '';
 
     #[Validate('nullable|string')]
     public ?string $description = '';
@@ -26,7 +26,7 @@ class CategoryForm extends Form
     {
         $this->selected_id = $category->id;
         $this->name = $category->name;
-        $this->secretariat_id = $category->secretariat_id;
+        $this->team_id = $category->team_id;
         $this->description = $category->description;
     }
 
@@ -37,12 +37,12 @@ class CategoryForm extends Form
         $data = $this->selected_id
             ? UpdateCategoryData::fromArray([
                 'name' => (string) $this->name,
-                'secretariat_id' => $this->secretariat_id,
+                'team_id' => $this->team_id,
                 'description' => $this->description,
             ])
             : CreateCategoryData::fromArray([
                 'name' => (string) $this->name,
-                'secretariat_id' => $this->secretariat_id,
+                'team_id' => $this->team_id,
                 'description' => $this->description,
             ]);
 

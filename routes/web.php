@@ -2,10 +2,10 @@
 
 use App\Application\Auth\ResolveUserHomeRoute;
 use App\Livewire\Admin\CategoryManager;
-use App\Livewire\Admin\SecretariatManager;
-use App\Livewire\Secretariat\ServiceOrderManager;
+use App\Livewire\Admin\TeamManager;
+use App\Livewire\Team\TaskManager;
 use App\Models\Category;
-use App\Models\Secretariat;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -38,18 +38,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
 
     Route::prefix('admin')->name('admin.')->group(function (): void {
-        Route::get('/secretarias', SecretariatManager::class)
-            ->can('viewAny', Secretariat::class)
-            ->name('secretariats');
+        Route::get('/equipes', TeamManager::class)
+            ->can('viewAny', Team::class)
+            ->name('teams');
 
         Route::get('/categorias', CategoryManager::class)
             ->can('viewAny', Category::class)
             ->name('categories');
     });
 
-    Route::get('/secretarias/{secretariat}/ods', ServiceOrderManager::class)
-        ->can('view', 'secretariat')
-        ->name('secretariats.ods');
+    Route::get('/equipes/{team}/tarefas', TaskManager::class)
+        ->can('view', 'team')
+        ->name('teams.tasks');
+
+    // Keep existing bookmarks usable during the transition to Tasks.
+    Route::get('/admin/secretarias', fn () => redirect()->route('admin.teams'))
+        ->can('viewAny', Team::class);
+
+    Route::get('/secretarias/{team}/ods', fn (Team $team) => redirect()->route('teams.tasks', $team))
+        ->can('view', 'team');
 });
 
 require __DIR__.'/auth.php';

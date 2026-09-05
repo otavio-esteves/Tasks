@@ -8,13 +8,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface CategoryRepository
 {
-    public function belongsToSecretariat(int $categoryId, int $secretariatId): bool;
+    public function belongsToTeam(int $categoryId, int $teamId): bool;
 
     public function paginate(string $search = '', int $perPage = 10): LengthAwarePaginator;
 
     public function findById(int $categoryId): ?Category;
 
-    public function slugExistsForSecretariat(int $secretariatId, string $slug, ?int $ignoreCategoryId = null): bool;
+    public function slugExistsForTeam(int $teamId, string $slug, ?int $ignoreCategoryId = null): bool;
 
     public function save(?Category $category, CategoryMutationData $data, string $slug): Category;
 

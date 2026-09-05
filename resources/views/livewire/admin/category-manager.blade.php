@@ -19,7 +19,7 @@
                 <thead>
                     <tr class="bg-gray-100">
                         <th class="p-3 border-b">Nome</th>
-                        <th class="p-3 border-b">Secretaria</th>
+                        <th class="p-3 border-b">Equipe</th>
                         <th class="p-3 border-b text-center">Ações</th>
                     </tr>
                 </thead>
@@ -29,7 +29,7 @@
                             <td class="p-3 border-b">{{ $category->name }}</td>
                             <td class="p-3 border-b">
                                 <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                                    {{ $category->secretariat->name }}
+                                    {{ $category->team->name }}
                                 </span>
                             </td>
                             <td class="p-3 border-b text-center">
@@ -59,14 +59,14 @@
                     
                     <div class="p-6 flex-auto">
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Secretaria Responsável</label>
-                            <select wire:model="form.secretariat_id" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Selecione uma secretaria...</option>
-                                @foreach($secretariats as $sec)
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Equipe Responsável</label>
+                            <select wire:model="form.team_id" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Selecione uma equipe...</option>
+                                @foreach($teams as $sec)
                                     <option value="{{ $sec->id }}">{{ $sec->name }}</option>
                                 @endforeach
                             </select>
-                            @error('form.secretariat_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            @error('form.team_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="mb-4">
