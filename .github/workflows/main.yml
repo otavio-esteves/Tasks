@@ -72,11 +72,17 @@ jobs:
       - name: Install PHP Dependencies
         run: composer install --no-ansi --no-interaction --no-progress --prefer-dist
 
+      - name: Audit PHP Dependencies
+        run: composer audit --locked --no-interaction
+
       - name: Generate key
         run: php artisan key:generate
 
       - name: Install NPM Dependencies
         run: npm ci
+
+      - name: Audit NPM Dependencies
+        run: npm audit --audit-level=low
 
       - name: Build assets
         run: npm run build
