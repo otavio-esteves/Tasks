@@ -26,7 +26,8 @@ O Tasks organiza demandas de qualquer organização por equipes e categorias, co
 ## Estrutura de dados
 
 - `teams`: equipes internas da organização.
-- `users.team_id`: vínculo do usuário à equipe; o perfil administrativo continua representado pelo vínculo nulo.
+- `users.team_id`: vínculo do usuário à equipe; vínculo nulo significa ausência de equipe, sem conceder privilégios.
+- `users.is_admin`: privilégio administrativo explícito, falso por padrão.
 - `categories.team_id`: categorias da equipe.
 - `tasks`: tarefas vinculadas à equipe e à categoria.
 - `task_checklists.task_id`: etapas da tarefa.

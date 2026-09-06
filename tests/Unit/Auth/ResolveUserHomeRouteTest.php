@@ -33,13 +33,13 @@ class ResolveUserHomeRouteTest extends TestCase
         $this->assertSame(['team' => $team->id], $target->parameters);
     }
 
-    public function test_user_without_team_receives_predictable_dashboard_route(): void
+    public function test_user_without_team_or_admin_privilege_is_pending(): void
     {
         $user = User::factory()->create(['team_id' => null]);
 
         $target = app(ResolveUserHomeRoute::class)->handle($user);
 
-        $this->assertSame('dashboard', $target->routeName);
+        $this->assertSame('access.pending', $target->routeName);
         $this->assertSame([], $target->parameters);
     }
 }

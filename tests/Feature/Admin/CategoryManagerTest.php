@@ -16,7 +16,7 @@ class CategoryManagerTest extends TestCase
 
     public function test_admin_can_create_update_and_delete_category_through_livewire(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $team = Team::factory()->create();
         $category = Category::factory()->create([
             'team_id' => $team->id,
@@ -67,7 +67,7 @@ class CategoryManagerTest extends TestCase
 
     public function test_category_manager_rejects_duplicate_slug_inside_same_team(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $team = Team::factory()->create();
 
         Category::factory()->create([
@@ -88,7 +88,7 @@ class CategoryManagerTest extends TestCase
 
     public function test_same_slug_is_allowed_in_different_teams(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $sec1 = Team::factory()->create();
         $sec2 = Team::factory()->create();
 

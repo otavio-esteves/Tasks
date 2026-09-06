@@ -33,7 +33,7 @@ class AccessControlTest extends TestCase
 
     public function test_admin_can_access_admin_routes(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
             ->get(route('admin.teams'))
@@ -89,7 +89,7 @@ class AccessControlTest extends TestCase
 
     public function test_admin_can_access_any_task_panel(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $team = Team::factory()->create();
 
         $this->actingAs($admin)

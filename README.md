@@ -71,8 +71,11 @@ Isso significa que:
 
 ## Perfis e autorização
 
-- `admin`: usuário com `team_id = null`
-- `usuário de equipe`: usuário vinculado a uma `team`
+- `admin`: usuário com `is_admin = true`, concedido explicitamente pelo operador do servidor.
+- `usuário de equipe`: usuário vinculado a uma `team`.
+- `aguardando acesso`: usuário sem equipe e sem privilégio administrativo.
+
+O cadastro público nunca concede privilégios administrativos nem escolhe uma equipe. A verificação de e-mail também não concede esses acessos. Consulte [o procedimento de segurança](docs/security.md) antes de atualizar instalações existentes.
 
 Regras atuais:
 

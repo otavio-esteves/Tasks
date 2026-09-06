@@ -29,7 +29,10 @@ class RegistrationTest extends TestCase
 
         $component->call('register');
 
-        $component->assertRedirect(route('dashboard', absolute: false));
+        $component->assertRedirect(route('access.pending', absolute: false));
+
+        $this->assertFalse(auth()->user()->isAdmin());
+        $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'is_admin' => false]);
 
         $this->assertAuthenticated();
     }

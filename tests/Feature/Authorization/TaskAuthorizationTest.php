@@ -269,7 +269,7 @@ class TaskAuthorizationTest extends TestCase
     {
         $team = Team::factory()->create();
         $category = Category::factory()->create(['team_id' => $team->id]);
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $task = Task::factory()->create([
             'team_id' => $team->id,
             'category_id' => $category->id,

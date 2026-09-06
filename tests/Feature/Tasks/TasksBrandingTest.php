@@ -46,7 +46,7 @@ class TasksBrandingTest extends TestCase
         $this->get('/secretarias/'.$otherTeam->id.'/ods')->assertForbidden();
         $this->get('/admin/secretarias')->assertForbidden();
 
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->get('/admin/secretarias')
             ->assertRedirect(route('admin.teams'));
     }

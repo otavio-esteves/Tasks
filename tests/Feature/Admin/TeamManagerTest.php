@@ -15,7 +15,7 @@ class TeamManagerTest extends TestCase
 
     public function test_admin_can_create_update_and_delete_team_through_livewire(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
         $team = Team::factory()->create([
             'name' => 'Equipe Original',
             'slug' => 'equipe-original',
@@ -61,7 +61,7 @@ class TeamManagerTest extends TestCase
 
     public function test_team_manager_rejects_duplicate_name(): void
     {
-        $admin = User::factory()->create(['team_id' => null]);
+        $admin = User::factory()->admin()->create();
 
         Team::factory()->create([
             'name' => 'Equipe de Operações',

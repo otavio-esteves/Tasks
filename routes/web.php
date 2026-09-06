@@ -37,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::view('profile', 'profile')->name('profile');
 
+    Route::view('/aguardando-acesso', 'auth.pending-access')->name('access.pending');
+
     Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/equipes', TeamManager::class)
             ->can('viewAny', Team::class)

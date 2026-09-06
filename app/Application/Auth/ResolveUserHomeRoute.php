@@ -16,6 +16,6 @@ class ResolveUserHomeRoute
             );
         }
 
-        return new RedirectTargetData('dashboard');
+        return new RedirectTargetData($user->isAdmin() ? 'dashboard' : 'access.pending');
     }
 }
