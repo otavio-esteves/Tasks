@@ -37,7 +37,7 @@
     },
     "scripts": {
         "lint": "pint",
-        "analyze": "phpstan analyze",
+        "analyze": "phpstan analyze --memory-limit=512M",
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"

@@ -23,7 +23,6 @@ jobs:
       DB_PASSWORD: password
       REDIS_HOST: 127.0.0.1
 
-
     services:
       postgres:
         image: postgres:18-alpine
@@ -90,3 +89,6 @@ jobs:
 
       - name: Run Pint Check
         run: ./vendor/bin/pint --test
+
+      - name: Run Static Analysis
+        run: composer analyze
