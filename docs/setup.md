@@ -1,6 +1,6 @@
 # Instalação e validação do Tasks
 
-O ambiente de desenvolvimento usa PHP 8.2, Laravel Sail, PostgreSQL 18 e Redis. É necessário ter Docker com Compose disponível.
+O ambiente de desenvolvimento usa PHP 8.2, Node.js 24 LTS, Laravel Sail, PostgreSQL 18 e Redis. É necessário ter Docker com Compose disponível.
 
 ## Primeira instalação
 
@@ -49,6 +49,8 @@ As URLs principais são `/admin/equipes` e `/equipes/{team}/tarefas`. URLs antig
 ## Validação
 
 ```bash
+./vendor/bin/sail composer install
+./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan test
 ./vendor/bin/sail pint --test
@@ -56,3 +58,19 @@ As URLs principais são `/admin/equipes` e `/equipes/{team}/tarefas`. URLs antig
 ```
 
 A suíte inclui criação e edição de tarefas, checklist, histórico, filtros, autorização por equipe e migração reversível com preservação dos dados. Falhas por ferramentas ou extensões ausentes no host não substituem a validação no Sail.
+
+A suíte completa inclui os guards arquiteturais. Para executá-los isoladamente:
+
+```bash
+./vendor/bin/sail artisan test tests/Unit/ArchitectureTest.php
+```
+
+`composer analyze` mantém o nível 5 do Larastan e reserva até 512 MB para o PHPStan, evitando o limite de 128 MB de alguns ambientes. `composer lint` altera arquivos; a validação usa `pint --test`.
+
+## CI e manutenção de dependências
+
+O workflow `.github/workflows/main.yml` valida pushes e pull requests para `main` e `master`, com PHP 8.2, Node.js 24 e PostgreSQL 18. Composer instala o lockfile com os scripts do Laravel habilitados; `npm ci` usa o lockfile do frontend. O cache npm é vinculado ao `package-lock.json` e não substitui a instalação.
+
+O serviço PostgreSQL cria o banco `testing`. Migrations e testes usam as mesmas variáveis `DB_*`, alinhadas ao `phpunit.xml`; no runner, PostgreSQL e Redis são acessados por `127.0.0.1`. No Sail, os hosts continuam `pgsql` e `redis`. Build, testes (incluindo arquitetura), Pint e Larastan são obrigatórios para o job passar.
+
+O Dependabot verifica Composer, npm e GitHub Actions semanalmente. Atualizações minor/patch são agrupadas por ecossistema; majors ficam separadas para revisão. Não há auto-merge configurado.

@@ -1,5 +1,8 @@
 # Tasks
 
+[![CI](https://github.com/otavio-esteves/Tasks/actions/workflows/main.yml/badge.svg)](https://github.com/otavio-esteves/Tasks/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Aplicação Laravel 12 + Livewire 3 para organizar o trabalho de qualquer organização:
 
 - equipes;
@@ -18,9 +21,9 @@ O projeto hoje usa uma Clean Architecture pragmática:
 
 - PHP `^8.2`
 - Composer
-- Node.js
+- Node.js 24 LTS
 - Docker + Sail recomendados para ambiente local
-- banco compatível com Laravel 12
+- PostgreSQL 18 e Redis (configurados no Sail)
 
 ## Subindo o projeto
 
@@ -35,7 +38,7 @@ A refatoração preserva os dados existentes com uma migration reversível. Tare
 ```bash
 ./vendor/bin/sail up -d
 ./vendor/bin/sail composer install
-./vendor/bin/sail npm install
+./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan test
 ./vendor/bin/sail pint --test
@@ -51,10 +54,11 @@ Use esta sequência:
 ```bash
 ./vendor/bin/sail up -d
 ./vendor/bin/sail composer install
-./vendor/bin/sail npm install
+./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan test
 ./vendor/bin/sail pint --test
+./vendor/bin/sail composer analyze
 ```
 
 O host local não é a referência oficial para validar o projeto.
@@ -291,3 +295,5 @@ Rodando tudo:
 
 - [Diretrizes arquiteturais](./docs/architecture-guidelines.md)
 - [Auditoria arquitetural](./docs/architecture-audit.md)
+- [Instalação e validação](./docs/setup.md)
+- [Instruções para agentes](./AGENTS.md)
