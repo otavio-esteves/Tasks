@@ -26,6 +26,8 @@ use App\Models\Task;
 use App\Models\Team;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Throwable;
@@ -106,14 +108,12 @@ class TaskManager extends Component
     public function createNewCategory(SaveCategory $saveCategory): void
     {
         $this->authorize('create', Category::class);
+        $this->newCategoryName = trim($this->newCategoryName);
 
-        $name = trim($this->newCategoryName);
-
-        if ($name === '') {
-            $this->addError('newCategoryName', 'O nome da categoria é obrigatório.');
-
-            return;
-        }
+        $validated = $this->validate([
+            'newCategoryName' => ['required', 'string', 'min:3', 'max:255'],
+        ]);
+        $name = trim($validated['newCategoryName']);
 
         try {
             $data = CreateCategoryData::fromArray([
@@ -131,8 +131,9 @@ class TaskManager extends Component
             $this->newCategoryName = '';
             $this->showCategoryModal = false;
         } catch (CategorySlugAlreadyExists $e) {
-            $this->addError('newCategoryName', 'Já existe uma categoria com este nome.');
+            $this->addError('newCategoryName', $e->getMessage());
         } catch (Throwable $e) {
+            report($e);
             $this->addError('newCategoryName', 'Erro ao criar categoria.');
         }
     }
@@ -166,11 +167,11 @@ class TaskManager extends Component
         $getTask = $getTask ?? app(GetTask::class);
         $updateTask = $updateTask ?? app(UpdateTask::class);
 
-        try {
-            if (trim((string) $this->form->newChecklistItem) !== '') {
-                $this->form->addChecklistItem();
-            }
+        if (trim((string) $this->form->newChecklistItem) !== '') {
+            $this->form->addChecklistItem();
+        }
 
+        try {
             if ($this->form->shouldPersistChecklistOnClose()) {
                 $this->persistChecklistChanges($getTask, $updateTask);
             }
@@ -179,8 +180,8 @@ class TaskManager extends Component
             $this->dispatch('task-modal-closed');
         } catch (InvalidTaskCategory|TaskNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (Throwable) {
-            $this->flashFallback('Não foi possível salvar a checklist agora. Tente novamente.', 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Não foi possível salvar a checklist agora. Tente novamente.', 'error');
         }
     }
 
@@ -195,8 +196,6 @@ class TaskManager extends Component
     {
         if ($this->form->taskId) {
             $this->updateStatus((int) $this->form->taskId, $status);
-        } else {
-            $this->form->currentStatus = $status;
         }
     }
 
@@ -209,21 +208,27 @@ class TaskManager extends Component
         $getTask = $getTask ?? app(GetTask::class);
         $changeTaskStatus = $changeTaskStatus ?? app(ChangeTaskStatus::class);
 
+        $validated = Validator::make(
+            ['status' => $status],
+            ['status' => ['required', Rule::enum(TaskStatus::class)]],
+            ['status.enum' => 'O status selecionado e invalido.'],
+        )->validate();
+
         try {
             $task = $getTask->handle($this->team->id, $id);
             $this->authorize('update', $task);
 
-            $changeTaskStatus->handle($this->team->id, auth()->id(), $id, TaskStatus::from($status));
+            $changeTaskStatus->handle($this->team->id, auth()->id(), $id, TaskStatus::from((string) $validated['status']));
 
             if ((int) $this->form->taskId === $id) {
                 $this->edit($id, 'details', $getTask);
             }
 
             $this->dispatch('task-status-updated');
-        } catch (InvalidTaskCategory|InvalidTaskStatusTransition|TaskNotFound|\ValueError $e) {
+        } catch (InvalidTaskCategory|InvalidTaskStatusTransition|TaskNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
         }
     }
 
@@ -256,8 +261,8 @@ class TaskManager extends Component
             $this->dispatch('task-saved');
         } catch (InvalidTaskCategory|TaskNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel salvar a tarefa agora. Tente novamente.', 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel salvar a tarefa agora. Tente novamente.', 'error');
         }
     }
 
@@ -273,8 +278,8 @@ class TaskManager extends Component
             $this->dispatch('open-task-modal', mode: 'edit', view: $view);
         } catch (TaskNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel carregar a tarefa.', 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel carregar a tarefa.', 'error');
         }
     }
 
@@ -292,8 +297,8 @@ class TaskManager extends Component
             session()->flash('success', 'Tarefa removida com sucesso!');
         } catch (TaskNotFound $e) {
             $this->flashException($e, 'error');
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel remover a tarefa agora.', 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel remover a tarefa agora.', 'error');
         }
     }
 

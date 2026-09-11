@@ -2,7 +2,6 @@
 
 namespace App\Application\Tasks\Data;
 
-use App\Domain\Tasks\TaskStatus;
 use App\Models\Task;
 use App\Models\TaskChecklist;
 use App\Models\TaskHistory;
@@ -24,7 +23,6 @@ abstract readonly class TaskMutationData
         public ?string $dueDate,
         public bool $isUrgent,
         public ?string $observation,
-        public ?string $status = null,
         public array $checklistItems = [],
         public array $historyItems = [],
     ) {}
@@ -37,7 +35,6 @@ abstract readonly class TaskMutationData
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null,
-     *     status?:string|null,
      *     checklist_items?:array<int, array{label?:string|null,is_completed?:bool,sort_order?:int}>
      * }  $data
      */
@@ -50,7 +47,6 @@ abstract readonly class TaskMutationData
             dueDate: self::normalizeNullableString($data['due_date'] ?? null),
             isUrgent: (bool) $data['is_urgent'],
             observation: self::normalizeNullableString($data['observation'] ?? null),
-            status: self::normalizeNullableString($data['status'] ?? null),
             checklistItems: self::normalizeChecklistItems($data['checklist_items'] ?? []),
         );
     }
@@ -60,9 +56,6 @@ abstract readonly class TaskMutationData
         /** @var Carbon|null $dueDate */
         $dueDate = $task->due_date;
 
-        /** @var TaskStatus $status */
-        $status = $task->status;
-
         return new static(
             title: $task->title,
             location: self::normalizeNullableString($task->location),
@@ -70,7 +63,6 @@ abstract readonly class TaskMutationData
             dueDate: $dueDate?->format('Y-m-d'),
             isUrgent: (bool) $task->is_urgent,
             observation: self::normalizeNullableString($task->observation),
-            status: $status->value,
             checklistItems: array_values(
                 $task->checklistItems
                     ->map(fn (TaskChecklist $item) => ChecklistItemData::fromModel($item))
@@ -91,13 +83,12 @@ abstract readonly class TaskMutationData
      *     category_id:int,
      *     due_date:string|null,
      *     is_urgent:bool,
-     *     observation:string|null,
-     *     status?:string|null
+     *     observation:string|null
      * }
      */
     public function toPersistenceArray(): array
     {
-        $data = [
+        return [
             'title' => $this->title,
             'location' => $this->location,
             'category_id' => $this->categoryId,
@@ -105,12 +96,6 @@ abstract readonly class TaskMutationData
             'is_urgent' => $this->isUrgent,
             'observation' => $this->observation,
         ];
-
-        if ($this->status) {
-            $data['status'] = $this->status;
-        }
-
-        return $data;
     }
 
     /**
@@ -132,7 +117,6 @@ abstract readonly class TaskMutationData
      *     dueDate:string,
      *     isUrgent:bool,
      *     observation:string,
-     *     status:string|null,
      *     checklistItems:list<array{label:string,is_completed:bool}>,
      *     historyItems:list<array{description:string,created_at:string|null,user_name:string|null,metadata:array|null}>
      * }
@@ -146,7 +130,6 @@ abstract readonly class TaskMutationData
             'dueDate' => $this->dueDate ?? '',
             'isUrgent' => $this->isUrgent,
             'observation' => $this->observation ?? '',
-            'status' => $this->status,
             'checklistItems' => array_map(
                 fn (ChecklistItemData $item) => $item->toFormState(),
                 $this->checklistItems,

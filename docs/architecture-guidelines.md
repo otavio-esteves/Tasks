@@ -238,7 +238,15 @@ No Livewire, o projeto hoje usa o trait:
 
 - `Task` usa o enum `TaskStatus`;
 - transição simples fica no model com `changeStatus(...)`;
+- `CreateTask` sempre inicia em `Pending` e `UpdateTask` não recebe status no DTO de mutação;
+- toda mudança de status passa por `ChangeTaskStatus` e registra histórico com metadados;
 - cobertura existe em `tests/Feature/Tasks/TaskDomainTest.php`.
+
+### Ciclo de vida de equipes e categorias
+
+- `DeleteTeam` consulta o contrato de repositório e impede a exclusão quando há usuários, categorias ou tarefas ativas;
+- `SaveCategory` impede mover categorias com tarefas ativas para outra equipe;
+- registros soft-deleted participam das verificações de unicidade para que conflitos sejam apresentados como exceptions de domínio amigáveis.
 
 ## 7. Policies e autorização
 

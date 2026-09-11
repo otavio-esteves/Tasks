@@ -6,12 +6,14 @@ use App\Application\Teams\DeleteTeam;
 use App\Application\Teams\GetTeam;
 use App\Application\Teams\Queries\ListTeams;
 use App\Application\Teams\SaveTeam;
+use App\Domain\Teams\Exceptions\TeamHasActiveDependencies;
 use App\Domain\Teams\Exceptions\TeamNameAlreadyExists;
 use App\Domain\Teams\Exceptions\TeamNotFound;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
 use App\Livewire\Forms\TeamForm;
 use App\Models\Team;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Throwable;
@@ -74,14 +76,16 @@ class TeamManager extends Component
             session()->flash('message', $this->form->selected_id ? 'Equipe atualizada!' : 'Equipe criada com sucesso!');
             $this->closeModal();
             $this->form->reset();
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (TeamNameAlreadyExists $e) {
             $this->addError('form.name', $e->getMessage());
         } catch (TeamNotFound $e) {
             $this->flashException($e);
             $this->closeModal();
             $this->form->reset();
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel salvar a equipe agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel salvar a equipe agora.');
         }
     }
 
@@ -94,8 +98,8 @@ class TeamManager extends Component
             $this->isModalOpen = true;
         } catch (TeamNotFound $e) {
             $this->flashException($e);
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel carregar a equipe agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel carregar a equipe agora.');
         }
     }
 
@@ -106,10 +110,10 @@ class TeamManager extends Component
             $this->authorize('delete', $record);
             $deleteTeam->handle($id);
             session()->flash('message', 'Equipe movida para a lixeira.');
-        } catch (TeamNotFound $e) {
+        } catch (TeamHasActiveDependencies|TeamNotFound $e) {
             $this->flashException($e);
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel remover a equipe agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel remover a equipe agora.');
         }
     }
 }

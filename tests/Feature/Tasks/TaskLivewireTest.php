@@ -157,4 +157,133 @@ class TaskLivewireTest extends TestCase
             'is_completed' => true,
         ]);
     }
+
+    public function test_generic_save_does_not_change_status_or_create_false_history(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+        $task = Task::factory()->forCategory($category)->create([
+            'status' => TaskStatus::Pending,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('edit', $task->id)
+            ->set('form.currentStatus', TaskStatus::Completed->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => TaskStatus::Pending->value,
+        ]);
+        $this->assertDatabaseCount('task_histories', 0);
+    }
+
+    public function test_new_task_always_starts_pending_even_if_form_status_is_tampered(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('form.title', 'Tarefa protegida')
+            ->set('form.categoryId', $category->id)
+            ->set('form.currentStatus', TaskStatus::Completed->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('tasks', [
+            'title' => 'Tarefa protegida',
+            'status' => TaskStatus::Pending->value,
+        ]);
+    }
+
+    public function test_task_fields_longer_than_database_limits_are_rejected(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('form.title', str_repeat('a', 256))
+            ->set('form.location', str_repeat('b', 256))
+            ->set('form.categoryId', $category->id)
+            ->set('form.checklistItems', [[
+                'label' => str_repeat('c', 256),
+                'is_completed' => false,
+            ]])
+            ->call('save')
+            ->assertHasErrors([
+                'form.title' => 'max',
+                'form.location' => 'max',
+                'form.checklistItems.0.label' => 'max',
+            ]);
+    }
+
+    public function test_invalid_due_date_is_rejected(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('form.title', 'Tarefa com prazo invalido')
+            ->set('form.categoryId', $category->id)
+            ->set('form.dueDate', '31/02/2026')
+            ->call('save')
+            ->assertHasErrors(['form.dueDate' => 'date_format']);
+    }
+
+    public function test_missing_category_is_rejected_before_use_case(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('form.title', 'Tarefa sem categoria valida')
+            ->set('form.categoryId', 999999)
+            ->call('save')
+            ->assertHasErrors(['form.categoryId' => 'exists']);
+
+        $this->assertDatabaseCount('tasks', 0);
+    }
+
+    public function test_quick_category_creation_uses_admin_name_rules(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('newCategoryName', 'ab')
+            ->call('createNewCategory')
+            ->assertHasErrors(['newCategoryName' => 'min'])
+            ->set('newCategoryName', str_repeat('a', 256))
+            ->call('createNewCategory')
+            ->assertHasErrors(['newCategoryName' => 'max']);
+
+        $this->assertDatabaseCount('categories', 0);
+    }
+
+    public function test_invalid_status_is_rejected_by_status_endpoint(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+        $task = Task::factory()->forTeam($team)->create([
+            'status' => TaskStatus::Pending,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('updateStatus', $task->id, 'invalid')
+            ->assertHasErrors(['status']);
+
+        $this->assertSame(TaskStatus::Pending, $task->refresh()->status);
+    }
 }

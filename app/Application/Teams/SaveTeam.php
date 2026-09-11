@@ -18,11 +18,12 @@ class SaveTeam
     public function handle(?int $teamId, TeamMutationData $data): Team
     {
         $team = $teamId === null ? null : $this->getTeam->handle($teamId);
+        $slug = Str::slug($data->name);
 
-        if ($this->teams->nameExists($data->name, $team?->id)) {
+        if ($this->teams->nameOrSlugExists($data->name, $slug, $team?->id)) {
             throw new TeamNameAlreadyExists;
         }
 
-        return $this->teams->save($team, $data, Str::slug($data->name));
+        return $this->teams->save($team, $data, $slug);
     }
 }

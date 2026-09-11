@@ -3,6 +3,7 @@
 namespace App\Application\Teams;
 
 use App\Application\Teams\Contracts\TeamRepository;
+use App\Domain\Teams\Exceptions\TeamHasActiveDependencies;
 
 class DeleteTeam
 {
@@ -13,6 +14,12 @@ class DeleteTeam
 
     public function handle(int $teamId): void
     {
-        $this->teams->delete($this->getTeam->handle($teamId));
+        $team = $this->getTeam->handle($teamId);
+
+        if ($this->teams->hasActiveDependencies($team)) {
+            throw new TeamHasActiveDependencies;
+        }
+
+        $this->teams->delete($team);
     }
 }

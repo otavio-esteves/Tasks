@@ -27,7 +27,6 @@ class Task extends Model
         'observation',
         'due_date',
         'is_urgent',
-        'status',
         'team_id',
         'category_id',
     ];

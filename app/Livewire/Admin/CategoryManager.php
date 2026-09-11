@@ -7,12 +7,14 @@ use App\Application\Categories\GetCategory;
 use App\Application\Categories\Queries\ListCategories;
 use App\Application\Categories\SaveCategory;
 use App\Application\Teams\Queries\ListTeamOptions;
+use App\Domain\Categories\Exceptions\CategoryHasActiveTasks;
 use App\Domain\Categories\Exceptions\CategoryNotFound;
 use App\Domain\Categories\Exceptions\CategorySlugAlreadyExists;
 use App\Livewire\Concerns\InteractsWithFriendlyExceptions;
 use App\Livewire\Forms\CategoryForm;
 use App\Models\Category;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Throwable;
@@ -76,14 +78,18 @@ class CategoryManager extends Component
             session()->flash('message', $this->form->selected_id ? 'Categoria atualizada!' : 'Categoria criada com sucesso!');
             $this->closeModal();
             $this->form->reset();
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (CategoryHasActiveTasks $e) {
+            $this->addError('form.team_id', $e->getMessage());
         } catch (CategorySlugAlreadyExists $e) {
             $this->addError('form.name', $e->getMessage());
         } catch (CategoryNotFound $e) {
             $this->flashException($e);
             $this->closeModal();
             $this->form->reset();
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel salvar a categoria agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel salvar a categoria agora.');
         }
     }
 
@@ -96,8 +102,8 @@ class CategoryManager extends Component
             $this->isModalOpen = true;
         } catch (CategoryNotFound $e) {
             $this->flashException($e);
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel carregar a categoria agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel carregar a categoria agora.');
         }
     }
 
@@ -110,8 +116,8 @@ class CategoryManager extends Component
             session()->flash('message', 'Categoria movida para a lixeira.');
         } catch (CategoryNotFound $e) {
             $this->flashException($e);
-        } catch (Throwable) {
-            $this->flashFallback('Nao foi possivel remover a categoria agora.');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel remover a categoria agora.');
         }
     }
 }

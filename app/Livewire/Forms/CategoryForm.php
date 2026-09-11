@@ -13,10 +13,10 @@ class CategoryForm extends Form
 {
     public ?int $selected_id = null;
 
-    #[Validate('required|min:3')]
+    #[Validate('required|string|min:3|max:255')]
     public string $name = '';
 
-    #[Validate('required|exists:teams,id')]
+    #[Validate('required|integer|exists:teams,id,deleted_at,NULL')]
     public string|int|null $team_id = '';
 
     #[Validate('nullable|string')]
@@ -32,6 +32,7 @@ class CategoryForm extends Form
 
     public function save(SaveCategory $saveCategory): void
     {
+        $this->name = trim($this->name);
         $this->validate();
 
         $data = $this->selected_id

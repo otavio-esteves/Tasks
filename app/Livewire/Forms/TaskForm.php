@@ -11,23 +11,27 @@ class TaskForm extends Form
 {
     public ?int $taskId = null;
 
-    #[Validate('required|min:3')]
+    #[Validate('required|string|min:3|max:255')]
     public string $title = '';
 
+    #[Validate('nullable|string|max:255')]
     public string $location = '';
 
-    #[Validate('required|integer')]
+    #[Validate('required|integer|exists:categories,id,deleted_at,NULL')]
     public string|int $categoryId = '';
 
+    #[Validate('nullable|date_format:Y-m-d')]
     public string $dueDate = '';
 
+    #[Validate('boolean')]
     public bool $isUrgent = false;
 
+    #[Validate('nullable|string')]
     public string $observation = '';
 
-    #[Validate('required|string')]
     public string $currentStatus = 'pending';
 
+    #[Validate('nullable|string|max:255')]
     public string $newChecklistItem = '';
 
     #[Validate([
@@ -51,7 +55,7 @@ class TaskForm extends Form
         $this->dueDate = $data['dueDate'];
         $this->isUrgent = $data['isUrgent'];
         $this->observation = $data['observation'];
-        $this->currentStatus = $data['status'] ?? 'pending';
+        $this->currentStatus = $task->status->value;
         $this->checklistItems = $data['checklistItems'];
         $this->historyItems = $data['historyItems'];
 
@@ -60,6 +64,8 @@ class TaskForm extends Form
 
     public function addChecklistItem(): void
     {
+        $this->validateOnly('newChecklistItem');
+
         $label = trim($this->newChecklistItem);
 
         if ($label === '') {
@@ -89,7 +95,6 @@ class TaskForm extends Form
             'due_date' => $this->dueDate,
             'is_urgent' => $this->isUrgent,
             'observation' => $this->observation,
-            'status' => $this->currentStatus,
             'checklist_items' => $this->checklistItems,
         ];
     }

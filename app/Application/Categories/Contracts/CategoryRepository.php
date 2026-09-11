@@ -16,6 +16,8 @@ interface CategoryRepository
 
     public function slugExistsForTeam(int $teamId, string $slug, ?int $ignoreCategoryId = null): bool;
 
+    public function hasActiveTasks(Category $category): bool;
+
     public function save(?Category $category, CategoryMutationData $data, string $slug): Category;
 
     public function delete(Category $category): void;

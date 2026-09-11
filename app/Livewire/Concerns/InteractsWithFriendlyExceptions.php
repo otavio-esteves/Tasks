@@ -11,8 +11,9 @@ trait InteractsWithFriendlyExceptions
         session()->flash($key, $exception->getMessage());
     }
 
-    protected function flashFallback(string $message, string $key = 'message'): void
+    protected function flashUnexpected(Throwable $exception, string $message, string $key = 'message'): void
     {
+        report($exception);
         session()->flash($key, $message);
     }
 }

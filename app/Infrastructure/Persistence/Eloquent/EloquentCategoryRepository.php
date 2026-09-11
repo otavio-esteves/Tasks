@@ -33,11 +33,16 @@ class EloquentCategoryRepository implements CategoryRepository
 
     public function slugExistsForTeam(int $teamId, string $slug, ?int $ignoreCategoryId = null): bool
     {
-        return Category::query()
+        return Category::withTrashed()
             ->where('team_id', $teamId)
             ->where('slug', $slug)
             ->when($ignoreCategoryId !== null, fn ($query) => $query->where('id', '!=', $ignoreCategoryId))
             ->exists();
+    }
+
+    public function hasActiveTasks(Category $category): bool
+    {
+        return $category->tasks()->exists();
     }
 
     public function save(?Category $category, CategoryMutationData $data, string $slug): Category

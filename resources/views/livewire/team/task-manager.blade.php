@@ -65,7 +65,7 @@
                     {{ config('app.name') }}
                 </span>
             </div>
-            <button x-on:click="sidebarOpen = false" class="text-slate-400 transition-colors p-2">
+            <button x-on:click="sidebarOpen = false" aria-label="Fechar menu lateral" class="text-slate-400 transition-colors p-2">
                 <i class="ph ph-x text-lg"></i>
             </button>
         </div>
@@ -216,7 +216,7 @@
 
             <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
                 <div class="flex items-center justify-end p-4 shrink-0">
-                    <button type="button" x-on:click="settingsOpen = false"
+                    <button type="button" x-on:click="settingsOpen = false" aria-label="Fechar configurações"
                         class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors duration-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                         <i class="ph ph-x text-2xl"></i>
                     </button>
@@ -314,7 +314,7 @@
 
     <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex flex-col md:flex-row items-center justify-between z-20 shrink-0 gap-3 transition-colors duration-200">
         <div class="flex items-center gap-2 w-full md:w-auto">
-            <button x-on:click="sidebarOpen = true" class="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200 group shrink-0">
+            <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200 group shrink-0">
                 <i class="ph ph-list text-lg"></i>
             </button>
             <div class="flex items-center gap-3">
@@ -354,7 +354,7 @@
 
         <div class="flex items-center gap-2 w-full md:w-auto">
             <div class="relative">
-                <button type="button" x-on:click="filterOpen = !filterOpen"
+                <button type="button" x-on:click="filterOpen = !filterOpen" aria-label="Abrir filtros"
                     class="h-8 w-8 flex items-center justify-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     :class="({{ $filterCategoryId !== '' ? 'true' : 'false' }} || {{ $filterStatus !== '' ? 'true' : 'false' }} || {{ $filterUrgent !== '' ? 'true' : 'false' }} || {{ $quickFilter !== '' ? 'true' : 'false' }}) ? 'ring-2 ring-slate-400 dark:ring-slate-600 text-slate-900 dark:text-white' : ''">
                     <i class="ph ph-funnel text-base"></i>
@@ -369,7 +369,7 @@
                     x-transition:leave-end="opacity-0 scale-95"
                     x-on:click.away="filterOpen = false"
                     x-cloak
-                    class="absolute right-0 top-10 w-72 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-4 z-30">
+                    class="absolute right-0 top-10 w-72 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-4 z-30">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <p class="text-sm font-bold text-slate-900 dark:text-white">Filtros</p>
@@ -439,7 +439,7 @@
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 translate-y-2"
          x-cloak
-         class="fixed bottom-6 right-6 z-[60] flex items-center gap-3 px-4 py-3 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl">
+         class="fixed bottom-6 right-6 z-[60] flex items-center gap-3 px-4 py-3 bg-slate-900 border border-slate-800 text-white rounded-md shadow-sm">
         <div class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500">
             <i class="ph-bold ph-check text-xs"></i>
         </div>
@@ -447,7 +447,7 @@
     </div>
 
     @if (session()->has('error'))
-        <div class="m-6 p-4 bg-red-500 text-white rounded-xl shadow-lg flex items-center gap-3">
+        <div class="m-6 p-4 bg-red-500 text-white rounded-md shadow-sm flex items-center gap-3">
             <i class="ph-fill ph-warning-circle text-2xl"></i>
             <span class="font-bold text-sm">{{ session('error') }}</span>
         </div>
@@ -548,6 +548,7 @@
                         <div class="flex justify-between items-center mt-4">
                             <button type="button" 
                                 x-on:click.stop="$wire.edit({{ $task->id }}, 'checklist'); modalView = 'checklist'; mode = 'edit'; modalOpen = true"
+                                aria-label="Abrir checklist da tarefa {{ $task->title }}"
                                 class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                                 <i class="ph ph-list-checks text-lg"></i>
                             </button>
@@ -593,7 +594,7 @@
          x-transition:leave-end="opacity-0"
          x-cloak>
         
-        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col max-h-[90vh] h-[90vh] md:h-[621px]"
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-md shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col max-h-[90vh] h-[90vh] md:h-[621px]"
          x-show="modalOpen"
          x-transition:enter="ease-out duration-300"
          x-transition:enter-start="opacity-0 scale-95"
@@ -605,26 +606,26 @@
                         x-text="mode === 'create' ? 'Nova Tarefa' : 'Editar Tarefa - ' + '{{ $form->taskId }}'"></h2>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" x-on:click="modalView = 'details'"
+                    <button type="button" x-on:click="modalView = 'details'" aria-label="Exibir detalhes da tarefa"
                         class="transition-colors"
                         :class="modalView === 'details' ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'"
                         title="Detalhes da Tarefa">
                         <i class="ph ph-info text-2xl"></i>
                     </button>
-                    <button type="button" x-on:click="modalView = 'checklist'"
+                    <button type="button" x-on:click="modalView = 'checklist'" aria-label="Exibir checklist da tarefa"
                         class="transition-colors"
                         :class="modalView === 'checklist' ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'"
                         title="Checklist">
                         <i class="ph ph-list-checks text-2xl"></i>
                     </button>
-                    <button type="button" x-on:click="modalView = 'history'"
+                    <button type="button" x-on:click="modalView = 'history'" aria-label="Exibir histórico da tarefa"
                         class="transition-colors"
                         :class="modalView === 'history' ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'"
                         title="Histórico de Alterações">
                         <i class="ph ph-clock-counter-clockwise text-2xl"></i>
                     </button>
                     <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                    <button type="button" x-on:click="$wire.closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <button type="button" x-on:click="$wire.closeModal()" aria-label="Fechar tarefa" class="text-slate-400 hover:text-slate-600 transition-colors">
                         <i class="ph ph-x text-2xl"></i>
                     </button>
                 </div>
@@ -646,13 +647,15 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Título da Tarefa</label>
                         <input wire:model="form.title" type="text" placeholder="Ex: Reparo de calçada"
-                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none transition-all text-slate-900 dark:text-slate-100 placeholder-slate-400">
+                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm focus:ring-2 focus:ring-slate-400 outline-none transition-all text-slate-900 dark:text-slate-100 placeholder-slate-400">
+                        @error('form.title') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Localização (Endereço/Ponto)</label>
                         <input wire:model="form.location" type="text" placeholder="Nome da rua, bairro ou praça"
-                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400">
+                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm focus:ring-2 focus:ring-slate-400 outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400">
+                        @error('form.location') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -666,20 +669,22 @@
                                     @endforeach
                                     <option value="new" class="font-bold text-slate-900 dark:text-white border-t">+ Criar nova categoria...</option>
                                 </select>
+                                @error('form.categoryId') <span class="block text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Prazo Conclusão</label>
                             <input wire:model="form.dueDate" type="date" class="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 [color-scheme:light] dark:[color-scheme:dark]">
+                            @error('form.dueDate') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
                     <label class="relative block cursor-pointer group touch-manipulation select-none">
                         <input wire:model="form.isUrgent" type="checkbox" class="sr-only">
-                        <div class="flex items-center justify-between p-4 rounded-2xl border transition-all duration-75 bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800"
+                        <div class="flex items-center justify-between p-4 rounded-md border transition-all duration-75 bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800"
                              :class="$wire.form.isUrgent ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900' : ''">
                             <div class="flex items-center gap-4">
-                                <div class="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+                                <div class="flex items-center justify-center w-10 h-10 rounded-md transition-colors"
                                      :class="$wire.form.isUrgent ? 'bg-red-500 text-white' : 'bg-red-100 dark:bg-red-900/30 text-red-600'">
                                     <i class="ph-fill ph-warning text-xl"></i>
                                 </div>
@@ -709,21 +714,24 @@
                         <div class="inline-flex w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-1" role="group">
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::Pending->value }}')"
-                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
+                                x-bind:disabled="mode === 'create'"
+                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
                                 <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
                                 Pendente
                             </button>
 
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::InProgress->value }}')"
-                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
+                                x-bind:disabled="mode === 'create'"
+                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
                                 <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
                                 Em andamento
                             </button>
 
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::Completed->value }}')"
-                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
+                                x-bind:disabled="mode === 'create'"
+                                class="flex-1 h-8 rounded-md px-2 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
                                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                 Concluído
                             </button>
@@ -762,6 +770,7 @@
                                 class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
                                 <button type="button"
                                     wire:click="toggleChecklistItem({{ $index }})"
+                                    aria-label="Alternar conclusão de {{ $item['label'] }}"
                                     class="flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors {{ !empty($item['is_completed']) ? 'bg-slate-900 border-slate-900 dark:bg-slate-100 dark:border-slate-100' : 'bg-white border-slate-300 dark:bg-slate-800 dark:border-slate-600' }}">
                                     <i class="ph ph-check text-xs {{ !empty($item['is_completed']) ? 'text-white dark:text-slate-900' : 'hidden' }}"></i>
                                 </button>
@@ -772,12 +781,13 @@
 
                                 <button type="button"
                                     wire:click="removeChecklistItem({{ $index }})"
+                                    aria-label="Remover {{ $item['label'] }} do checklist"
                                     class="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                                     <i class="ph ph-trash text-lg"></i>
                                 </button>
                             </li>
                         @empty
-                            <li class="flex flex-col items-center justify-center text-center px-6 py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20">
+                            <li class="flex flex-col items-center justify-center text-center px-6 py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-md bg-slate-50/50 dark:bg-slate-950/20">
                                 <i class="ph ph-list-plus text-3xl text-slate-300 mb-2"></i>
                                 <p class="text-xs text-slate-400 font-medium">Nenhum item adicionado.</p>
                                 <p class="text-xs text-slate-400">Cadastre as etapas da execução para acompanhar o andamento.</p>
@@ -790,10 +800,12 @@
                             wire:keydown.enter.prevent="addChecklistItem"
                             class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none transition-all text-slate-900 dark:text-slate-100">
                         <button type="button" wire:click="addChecklistItem"
+                            aria-label="Adicionar item ao checklist"
                             class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors">
                             <i class="ph ph-plus font-bold"></i>
                         </button>
                     </div>
+                    @error('form.newChecklistItem') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="flex flex-col h-full overflow-hidden p-6" x-show="modalView === 'history'">
@@ -807,7 +819,7 @@
                     <ul class="space-y-3 flex-1 overflow-y-auto custom-scrollbar mb-4 min-h-0 pr-2">
                         @forelse ($form->historyItems as $index => $item)
                             <li wire:key="history-item-{{ $index }}" x-data="{ expanded: false }"
-                                class="flex flex-col gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                class="flex flex-col gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md">
                                 
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex-1">
@@ -816,7 +828,7 @@
                                         </p>
                                     </div>
                                     @if(!empty($item['metadata']))
-                                        <button type="button" @click="expanded = !expanded" class="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                        <button type="button" @click="expanded = !expanded" aria-label="Exibir detalhes do histórico" class="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                                             <i class="ph text-sm transition-transform" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
                                         </button>
                                     @endif
@@ -905,7 +917,7 @@
 
                             </li>
                         @empty
-                            <li class="flex flex-col items-center justify-center text-center px-6 py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20">
+                            <li class="flex flex-col items-center justify-center text-center px-6 py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-md bg-slate-50/50 dark:bg-slate-950/20">
                                 <i class="ph ph-clock-counter-clockwise text-3xl text-slate-300 mb-2"></i>
                                 <p class="text-xs text-slate-400 font-medium">Nenhum registro no histórico.</p>
                                 <p class="text-xs text-slate-400">Adicione notas sobre o andamento e alterações da tarefa.</p>
@@ -917,11 +929,11 @@
                 <div class="px-6 pb-6 pt-0 shrink-0 border-t-0">
                     <div class="flex gap-3">
                         <button type="button" x-on:click="$wire.closeModal()"
-                            class="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            class="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             Cancelar
                         </button>
                         <button type="submit"
-                            class="flex-1 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg">
+                            class="flex-1 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-md hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-sm">
                             <span x-text="mode === 'create' ? 'Criar Tarefa' : 'Salvar Alterações'"></span>
                         </button>
                     </div>
@@ -933,10 +945,10 @@
     {{-- Modal de Criacao de Categoria --}}
     @if($showCategoryModal)
         <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-md shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Nova Categoria</h3>
-                    <button type="button" wire:click="closeCategoryModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <button type="button" wire:click="closeCategoryModal" aria-label="Fechar criação de categoria" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                         <i class="ph ph-x text-xl"></i>
                     </button>
                 </div>
@@ -946,7 +958,7 @@
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Nome da Categoria</label>
                         <input wire:model="newCategoryName" type="text" placeholder="Ex: Manutencao Eletrica"
                             wire:keydown.enter.prevent="createNewCategory"
-                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-slate-400 transition-all text-slate-900 dark:text-slate-100 placeholder-slate-400">
+                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:ring-2 focus:ring-slate-400 transition-all text-slate-900 dark:text-slate-100 placeholder-slate-400">
                         @error('newCategoryName')
                             <span class="text-[10px] font-bold text-red-500 uppercase tracking-tight">{{ $message }}</span>
                         @enderror
@@ -954,11 +966,11 @@
 
                     <div class="flex gap-3 pt-2">
                         <button type="button" wire:click="closeCategoryModal"
-                            class="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors uppercase">
+                            class="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors uppercase">
                             Cancelar
                         </button>
                         <button type="button" wire:click="createNewCategory"
-                            class="flex-1 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg uppercase">
+                            class="flex-1 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-md hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-sm uppercase">
                             Criar Categoria
                         </button>
                     </div>

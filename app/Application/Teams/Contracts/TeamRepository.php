@@ -15,7 +15,9 @@ interface TeamRepository
 
     public function findById(int $teamId): ?Team;
 
-    public function nameExists(string $name, ?int $ignoreTeamId = null): bool;
+    public function nameOrSlugExists(string $name, string $slug, ?int $ignoreTeamId = null): bool;
+
+    public function hasActiveDependencies(Team $team): bool;
 
     public function save(?Team $team, TeamMutationData $data, string $slug): Team;
 

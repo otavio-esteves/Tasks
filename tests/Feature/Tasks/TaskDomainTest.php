@@ -326,7 +326,6 @@ class TaskDomainTest extends TestCase
             'dueDate' => '2026-05-10',
             'isUrgent' => true,
             'observation' => 'Observacao',
-            'status' => 'pending',
             'checklistItems' => [
                 ['label' => 'Item 1', 'is_completed' => false],
                 ['label' => 'Item 2', 'is_completed' => true],
@@ -395,6 +394,7 @@ class TaskDomainTest extends TestCase
         ]);
 
         $history = $updated->histories()->first();
+        $this->assertSame('Status alterado de Pendente para Em andamento.', $history->description);
         $this->assertSame('pending', $history->metadata['status']['from']);
         $this->assertSame('in_progress', $history->metadata['status']['to']);
     }

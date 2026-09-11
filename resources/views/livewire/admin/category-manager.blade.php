@@ -52,7 +52,7 @@
         <div class="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
             <div class="fixed inset-0 bg-black opacity-50"></div>
             <div class="relative w-full max-w-lg mx-auto my-6 z-50">
-                <div class="bg-white rounded-lg shadow-lg relative flex flex-col w-full outline-none focus:outline-none">
+                <div class="bg-white rounded-md shadow-sm relative flex flex-col w-full outline-none focus:outline-none">
                     <div class="p-6 border-b border-solid border-gray-200 rounded-t">
                         <h3 class="text-xl font-semibold">{{ $form->selected_id ? 'Editar Categoria' : 'Nova Categoria' }}</h3>
                     </div>
