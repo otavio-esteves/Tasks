@@ -21,10 +21,19 @@ Defina `WWWUSER` e `WWWGROUP` no `.env` com os valores de `id -u` e `id -g`. Aju
 ```bash
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan key:generate
-./vendor/bin/sail artisan migrate
+./vendor/bin/sail artisan migrate --seed
 ./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run dev
 ```
+
+O seeder cria uma conta local verificada, vinculada à equipe **Operações**:
+
+```text
+E-mail: test@example.com
+Senha: password
+```
+
+O seeder pode ser executado novamente com `./vendor/bin/sail artisan db:seed` para restaurar essa conta de desenvolvimento sem duplicá-la.
 
 O nome padrão é **Tasks**. `APP_NAME` permite personalizar o nome mostrado no título, no login, na navegação e na tela Sobre. Cada instalação atende uma organização, que pode criar suas próprias equipes e categorias. Equipes são unidades internas de acesso; não são organizações independentes com isolamento de tenants.
 

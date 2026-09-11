@@ -25,12 +25,15 @@ class DatabaseSeeder extends Seeder
             ['slug' => Str::slug($nomeEquipe)]
         );
 
-        User::factory()->create([
-            'name' => 'Test User',
+        $user = User::query()->firstOrNew([
             'email' => 'test@example.com',
+        ]);
+
+        $user->forceFill([
+            'name' => 'Test User',
             'password' => Hash::make('password'),
             'team_id' => $equipe->id,
             'email_verified_at' => now(),
-        ]);
+        ])->save();
     }
 }
