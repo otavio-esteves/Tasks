@@ -9,6 +9,10 @@ class ResolveUserHomeRoute
 {
     public function handle(User $user): RedirectTargetData
     {
+        if ($user->isAdmin()) {
+            return new RedirectTargetData('dashboard');
+        }
+
         if ($user->team_id !== null) {
             return new RedirectTargetData(
                 routeName: 'teams.tasks',
@@ -16,6 +20,6 @@ class ResolveUserHomeRoute
             );
         }
 
-        return new RedirectTargetData($user->isAdmin() ? 'dashboard' : 'access.pending');
+        return new RedirectTargetData('access.pending');
     }
 }

@@ -246,6 +246,7 @@ No Livewire, o projeto hoje usa o trait:
 
 - `DeleteTeam` consulta o contrato de repositório e impede a exclusão quando há usuários, categorias ou tarefas ativas;
 - `SaveCategory` impede mover categorias com tarefas ativas para outra equipe;
+- `DeleteCategory` impede excluir categorias com tarefas ativas;
 - registros soft-deleted participam das verificações de unicidade para que conflitos sejam apresentados como exceptions de domínio amigáveis.
 
 ## 7. Policies e autorização

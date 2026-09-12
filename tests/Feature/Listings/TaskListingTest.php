@@ -60,7 +60,7 @@ class TaskListingTest extends TestCase
 
         $listing = app(ListTasks::class)->handle($team->id, '', [], 3);
 
-        $this->assertSame(4, $listing->summary['total']);
+        $this->assertSame(6, $listing->summary['total']);
         $this->assertSame(2, $listing->summary['completed']);
         $this->assertCount(3, $listing->tasks->items());
         $this->assertSame(2, $listing->tasks->lastPage());
@@ -171,8 +171,42 @@ class TaskListingTest extends TestCase
             ->assertSee('Tarefa concluida')
             ->assertDontSee('Tarefa urgente')
             ->call('applyQuickFilter', 'total')
-            ->assertSet('quickFilter', '')
+            ->assertSet('quickFilter', 'total')
             ->assertSee('Tarefa urgente')
-            ->assertDontSee('Tarefa concluida');
+            ->assertSee('Tarefa concluida');
+    }
+
+    public function test_changing_urgency_keeps_task_in_its_original_position(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+        $olderTask = Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'title' => 'Tarefa mais antiga',
+            'status' => TaskStatus::Pending,
+            'is_urgent' => false,
+            'created_at' => now()->subHour(),
+        ]);
+        $newerTask = Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'title' => 'Tarefa mais recente',
+            'status' => TaskStatus::Pending,
+            'is_urgent' => false,
+            'created_at' => now(),
+        ]);
+
+        $before = app(ListTasks::class)->handle($team->id, '', [], 10);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('toggleInlineUrgency', $olderTask->id)
+            ->assertDispatched('task-inline-updated');
+
+        $after = app(ListTasks::class)->handle($team->id, '', [], 10);
+
+        $this->assertSame([$newerTask->id, $olderTask->id], $before->tasks->pluck('id')->all());
+        $this->assertSame([$newerTask->id, $olderTask->id], $after->tasks->pluck('id')->all());
+        $this->assertTrue($olderTask->refresh()->is_urgent);
     }
 }

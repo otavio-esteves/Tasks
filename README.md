@@ -84,7 +84,7 @@ Regras atuais:
 - usuário de equipe só acessa e manipula tarefas da própria equipe;
 - categoria usada em uma tarefa deve pertencer à mesma equipe.
 - equipes com usuários, categorias ou tarefas ativas não podem ser excluídas;
-- categorias com tarefas ativas não podem ser movidas entre equipes;
+- categorias com tarefas ativas não podem ser movidas entre equipes nem excluídas;
 - mudanças de status de tarefa passam exclusivamente por `ChangeTaskStatus` e geram histórico.
 
 A autorização é aplicada em:

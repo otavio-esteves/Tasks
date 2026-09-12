@@ -6,8 +6,18 @@ use DomainException;
 
 class CategoryHasActiveTasks extends DomainException
 {
-    public function __construct()
+    private function __construct(string $message)
     {
-        parent::__construct('A categoria possui tarefas ativas e nao pode ser movida para outra equipe.');
+        parent::__construct($message);
+    }
+
+    public static function preventsMoving(): self
+    {
+        return new self('A categoria possui tarefas ativas e nao pode ser movida para outra equipe.');
+    }
+
+    public static function preventsDeletion(): self
+    {
+        return new self('A categoria possui tarefas ativas e nao pode ser excluida.');
     }
 }

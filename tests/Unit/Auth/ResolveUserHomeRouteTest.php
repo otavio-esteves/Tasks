@@ -22,6 +22,18 @@ class ResolveUserHomeRouteTest extends TestCase
         $this->assertSame([], $target->parameters);
     }
 
+    public function test_admin_linked_to_team_is_resolved_to_dashboard_route(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->admin()->forTeam($team)->create();
+
+        $target = app(ResolveUserHomeRoute::class)->handle($user);
+
+        $this->assertSame('dashboard', $target->routeName);
+        $this->assertSame([], $target->parameters);
+        $this->assertSame($team->id, $user->team_id);
+    }
+
     public function test_team_user_is_resolved_to_own_task_route(): void
     {
         $team = Team::factory()->create();

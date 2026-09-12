@@ -10,17 +10,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 border-l-4 border-blue-500">
                     <div class="text-sm font-medium text-gray-500 truncate">Total de Equipes</div>
-                    <div class="mt-1 text-3xl font-semibold text-gray-900">{{ \App\Models\Team::count() }}</div>
+                    <div class="mt-1 text-3xl font-semibold text-gray-900">{{ $counters->activeTeams }}</div>
                 </div>
                 
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 border-l-4 border-green-500">
                     <div class="text-sm font-medium text-gray-500 truncate">Categorias Ativas</div>
-                    <div class="mt-1 text-3xl font-semibold text-gray-900">{{ \App\Models\Category::count() }}</div>
+                    <div class="mt-1 text-3xl font-semibold text-gray-900">{{ $counters->activeCategories }}</div>
                 </div>
 
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 border-l-4 border-yellow-500">
                     <div class="text-sm font-medium text-gray-500 truncate">Tarefas pendentes</div>
-                    <div class="mt-1 text-3xl font-semibold text-gray-900">0</div> {{-- Placeholder para Fase 3 --}}
+                    <div class="mt-1 text-3xl font-semibold text-gray-900">{{ $counters->activePendingTasks }}</div>
                 </div>
             </div>
 

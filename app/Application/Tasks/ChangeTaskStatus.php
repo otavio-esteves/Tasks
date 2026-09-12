@@ -17,6 +17,10 @@ class ChangeTaskStatus
     {
         $task = $this->getTask->handle($teamId, $taskId);
 
+        if ($task->status === $status) {
+            return $task;
+        }
+
         return $this->tasks->changeStatus($task, $userId, $status);
     }
 }

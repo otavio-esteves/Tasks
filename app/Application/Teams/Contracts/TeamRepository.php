@@ -9,6 +9,8 @@ use Illuminate\Support\Collection;
 
 interface TeamRepository
 {
+    public function countActive(): int;
+
     public function paginate(string $search = '', int $perPage = 10): LengthAwarePaginator;
 
     public function listOptions(): Collection;

@@ -66,6 +66,59 @@ class CategoryManagerTest extends TestCase
         ]);
     }
 
+    public function test_category_without_tasks_can_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $category = Category::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CategoryManager::class)
+            ->call('delete', $category->id)
+            ->assertHasNoErrors();
+
+        $this->assertSoftDeleted('categories', [
+            'id' => $category->id,
+        ]);
+    }
+
+    public function test_category_with_active_task_cannot_be_deleted_and_records_remain_intact(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $category = Category::factory()->create();
+        $task = Task::factory()->forCategory($category)->create();
+
+        Livewire::actingAs($admin)
+            ->test(CategoryManager::class)
+            ->call('delete', $category->id)
+            ->assertSee('A categoria possui tarefas ativas e nao pode ser excluida.');
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'deleted_at' => null,
+        ]);
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'category_id' => $category->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_category_with_only_soft_deleted_tasks_can_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $category = Category::factory()->create();
+        Task::factory()->forCategory($category)->create()->delete();
+
+        Livewire::actingAs($admin)
+            ->test(CategoryManager::class)
+            ->call('delete', $category->id)
+            ->assertHasNoErrors();
+
+        $this->assertSoftDeleted('categories', [
+            'id' => $category->id,
+        ]);
+    }
+
     public function test_category_manager_rejects_duplicate_slug_inside_same_team(): void
     {
         $admin = User::factory()->admin()->create();

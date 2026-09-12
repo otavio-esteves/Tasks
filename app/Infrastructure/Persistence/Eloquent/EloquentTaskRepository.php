@@ -3,16 +3,25 @@
 namespace App\Infrastructure\Persistence\Eloquent;
 
 use App\Application\Tasks\Contracts\TaskRepository;
+use App\Application\Tasks\Data\ChecklistItemData;
 use App\Application\Tasks\Data\CreateTaskData;
 use App\Application\Tasks\Data\TaskListResult;
 use App\Application\Tasks\Data\UpdateTaskData;
 use App\Domain\Tasks\TaskStatus;
 use App\Models\Task;
+use App\Models\TaskChecklist;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class EloquentTaskRepository implements TaskRepository
 {
+    public function countActivePending(): int
+    {
+        return Task::query()
+            ->where('status', TaskStatus::Pending->value)
+            ->count();
+    }
+
     public function createForTeam(int $teamId, int $userId, CreateTaskData $data): Task
     {
         return DB::transaction(function () use ($teamId, $userId, $data): Task {
@@ -48,22 +57,11 @@ class EloquentTaskRepository implements TaskRepository
         return DB::transaction(function () use ($task, $userId, $data): Task {
             $original = $task->getOriginal();
 
-            // Capture old checklist state as a simple list
-            $oldChecklist = $task->checklistItems->map(fn ($c) => [
-                'label' => $c->label,
-                'is_completed' => (bool) $c->is_completed,
-            ])->toArray();
+            $oldChecklist = $this->checklistSnapshot($task);
 
             $task->fill($data->toPersistenceArray());
             $changes = $task->getDirty();
             $task->save();
-
-            // Persist new checklist
-            $newChecklist = $data->checklistItemsForPersistence();
-            $task->checklistItems()->delete();
-            if ($data->checklistItems !== []) {
-                $task->checklistItems()->createMany($newChecklist);
-            }
 
             $logs = [];
             $metadata = [];
@@ -102,60 +100,12 @@ class EloquentTaskRepository implements TaskRepository
                 $metadata['category_id'] = ['from' => $original['category_id'] ?? '', 'to' => $changes['category_id'] ?? ''];
             }
 
-            // Improved Checklist Diff Logic
-            $newChecklistSimplified = array_map(fn ($item) => [
-                'label' => $item['label'],
-                'is_completed' => (bool) $item['is_completed'],
-            ], $newChecklist);
+            $checklistLogs = $this->syncChecklist($task, $data);
+            $logs = [...$logs, ...$checklistLogs];
+            $newChecklist = $this->checklistSnapshotFromData($data);
 
-            if (json_encode($oldChecklist) !== json_encode($newChecklistSimplified)) {
-                $metadata['checklist'] = ['from' => $oldChecklist, 'to' => $newChecklistSimplified];
-
-                // Track item occurrences to detect changes even with duplicate labels
-                $oldMap = [];
-                foreach ($oldChecklist as $item) {
-                    $oldMap[$item['label']][] = $item['is_completed'];
-                }
-                $newMap = [];
-                foreach ($newChecklistSimplified as $item) {
-                    $newMap[$item['label']][] = $item['is_completed'];
-                }
-
-                $allLabels = array_unique(array_merge(array_keys($oldMap), array_keys($newMap)));
-
-                foreach ($allLabels as $label) {
-                    $oldStatusList = $oldMap[$label] ?? [];
-                    $newStatusList = $newMap[$label] ?? [];
-
-                    $oldCount = count($oldStatusList);
-                    $newCount = count($newStatusList);
-
-                    if ($newCount > $oldCount) {
-                        for ($i = 0; $i < ($newCount - $oldCount); $i++) {
-                            $logs[] = "Item '{$label}' adicionado ao checklist.";
-                        }
-                    } elseif ($newCount < $oldCount) {
-                        for ($i = 0; $i < ($oldCount - $newCount); $i++) {
-                            $logs[] = "Item '{$label}' removido do checklist.";
-                        }
-                    }
-
-                    // For remaining items (intersection), check status changes
-                    $checkCount = min($oldCount, $newCount);
-                    // This is a simplification: it just checks if the count of completed items changed for this label
-                    $oldCompleted = count(array_filter($oldStatusList));
-                    $newCompleted = count(array_filter($newStatusList));
-
-                    if ($newCompleted > $oldCompleted) {
-                        for ($i = 0; $i < ($newCompleted - $oldCompleted); $i++) {
-                            $logs[] = "Item '{$label}' concluído.";
-                        }
-                    } elseif ($newCompleted < $oldCompleted) {
-                        for ($i = 0; $i < ($oldCompleted - $newCompleted); $i++) {
-                            $logs[] = "Item '{$label}' marcado como pendente.";
-                        }
-                    }
-                }
+            if ($oldChecklist !== $newChecklist) {
+                $metadata['checklist'] = ['from' => $oldChecklist, 'to' => $newChecklist];
             }
 
             if ($logs !== []) {
@@ -168,6 +118,91 @@ class EloquentTaskRepository implements TaskRepository
 
             return $task->fresh(['category', 'checklistItems', 'histories.user']);
         });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function syncChecklist(Task $task, UpdateTaskData $data): array
+    {
+        /** @var array<int, TaskChecklist> $existing */
+        $existing = $task->checklistItems->keyBy('id')->all();
+        $retainedIds = [];
+        $logs = [];
+        $orderChanged = false;
+
+        foreach ($data->checklistItems as $checklistItem) {
+            $item = $checklistItem->id !== null
+                ? ($existing[$checklistItem->id] ?? null)
+                : null;
+
+            if ($item === null || isset($retainedIds[$item->id])) {
+                $task->checklistItems()->create($checklistItem->toPersistenceArray());
+                $logs[] = "Item '{$checklistItem->label}' adicionado ao checklist.";
+
+                continue;
+            }
+
+            $oldLabel = $item->label;
+            $oldCompleted = (bool) $item->is_completed;
+            $oldSortOrder = $item->sort_order;
+            $retainedIds[$item->id] = true;
+
+            $item->fill($checklistItem->toPersistenceArray());
+
+            if ($item->isDirty()) {
+                $item->save();
+            }
+
+            if ($oldLabel !== $checklistItem->label) {
+                $logs[] = "Item '{$oldLabel}' renomeado para '{$checklistItem->label}'.";
+            }
+
+            if ($oldCompleted !== $checklistItem->isCompleted) {
+                $logs[] = $checklistItem->isCompleted
+                    ? "Item '{$checklistItem->label}' concluído."
+                    : "Item '{$checklistItem->label}' marcado como pendente.";
+            }
+
+            $orderChanged = $orderChanged || $oldSortOrder !== $checklistItem->sortOrder;
+        }
+
+        foreach ($existing as $id => $item) {
+            if (isset($retainedIds[$id])) {
+                continue;
+            }
+
+            $logs[] = "Item '{$item->label}' removido do checklist.";
+            $item->delete();
+        }
+
+        if ($orderChanged) {
+            $logs[] = 'Ordem do checklist atualizada.';
+        }
+
+        return $logs;
+    }
+
+    /**
+     * @return list<array{label:string,is_completed:bool}>
+     */
+    private function checklistSnapshot(Task $task): array
+    {
+        return array_values($task->checklistItems->map(fn (TaskChecklist $item): array => [
+            'label' => $item->label,
+            'is_completed' => (bool) $item->is_completed,
+        ])->all());
+    }
+
+    /**
+     * @return list<array{label:string,is_completed:bool}>
+     */
+    private function checklistSnapshotFromData(UpdateTaskData $data): array
+    {
+        return array_map(fn (ChecklistItemData $item): array => [
+            'label' => $item->label,
+            'is_completed' => $item->isCompleted,
+        ], $data->checklistItems);
     }
 
     public function changeStatus(Task $task, int $userId, TaskStatus $status): Task
@@ -222,15 +257,16 @@ class EloquentTaskRepository implements TaskRepository
                 ->whereDate('due_date', '<', $today)
                 ->where('status', '!=', TaskStatus::Completed->value));
 
-        $isCompletedRequested = $status === TaskStatus::Completed->value || $quickFilter === 'completed';
+        $isCompletedRequested = $status === TaskStatus::Completed->value
+            || in_array($quickFilter, ['completed', 'total'], true);
 
         if (! $isCompletedRequested) {
             $listQuery->where('status', '!=', TaskStatus::Completed->value);
         }
 
         $tasks = $listQuery
-            ->orderBy('is_urgent', 'desc')
             ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate($perPage);
 
         $summaryBase = clone $baseQuery;
@@ -239,7 +275,7 @@ class EloquentTaskRepository implements TaskRepository
         }
 
         $summary = [
-            'total' => (clone $summaryBase)->toBase()->count(),
+            'total' => (clone $baseQuery)->toBase()->count(),
             'urgent' => (clone $summaryBase)->where('is_urgent', true)->toBase()->count(),
             'overdue' => (clone $summaryBase)
                 ->whereDate('due_date', '<', $today)

@@ -114,6 +114,8 @@ class CategoryManager extends Component
             $this->authorize('delete', $record);
             $deleteCategory->handle($id);
             session()->flash('message', 'Categoria movida para a lixeira.');
+        } catch (CategoryHasActiveTasks $e) {
+            $this->flashException($e);
         } catch (CategoryNotFound $e) {
             $this->flashException($e);
         } catch (Throwable $e) {

@@ -27,6 +27,120 @@ class TaskLivewireTest extends TestCase
             ->assertSee($team->name);
     }
 
+    public function test_task_manager_renders_list_view_control_and_inline_checklist_panel(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+        Task::factory()->forTeam($team)->create(['status' => TaskStatus::Pending]);
+
+        $this->actingAs($user)
+            ->get(route('teams.tasks', $team))
+            ->assertOk()
+            ->assertSee('Visualização em lista')
+            ->assertSee('Duplo clique para editar')
+            ->assertSee('Clique para avançar o status')
+            ->assertSee('Clique para alternar a prioridade')
+            ->assertSee('Checklist da tarefa')
+            ->assertDontSee('Abrir checklist da tarefa')
+            ->assertDontSee('Exibir checklist da tarefa');
+    }
+
+    public function test_task_information_can_be_edited_inline_from_list_view(): void
+    {
+        $team = Team::factory()->create();
+        $originalCategory = Category::factory()->for($team)->create();
+        $newCategory = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+        $task = Task::factory()->forCategory($originalCategory)->create([
+            'team_id' => $team->id,
+            'title' => 'Titulo original',
+            'location' => 'Local original',
+            'due_date' => null,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('startInlineEdit', $task->id, 'title')
+            ->assertSet('inlineEditValue', 'Titulo original')
+            ->set('inlineEditValue', 'Titulo atualizado')
+            ->call('saveInlineEdit')
+            ->assertHasNoErrors()
+            ->assertDispatched('task-inline-updated')
+            ->call('startInlineEdit', $task->id, 'location')
+            ->set('inlineEditValue', 'Novo local')
+            ->call('saveInlineEdit')
+            ->call('startInlineEdit', $task->id, 'category_id')
+            ->set('inlineEditValue', $newCategory->id)
+            ->call('saveInlineEdit')
+            ->call('startInlineEdit', $task->id, 'due_date')
+            ->set('inlineEditValue', '2026-12-18')
+            ->call('saveInlineEdit')
+            ->assertSet('inlineEditingTaskId', null);
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'title' => 'Titulo atualizado',
+            'location' => 'Novo local',
+            'category_id' => $newCategory->id,
+            'due_date' => '2026-12-18',
+        ]);
+    }
+
+    public function test_inline_priority_and_status_controls_update_task_without_opening_form(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+        $task = Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'is_urgent' => false,
+            'status' => TaskStatus::Pending,
+        ]);
+
+        $component = Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('toggleInlineUrgency', $task->id)
+            ->assertDispatched('task-inline-updated');
+
+        $this->assertTrue($task->refresh()->is_urgent);
+
+        $component->call('cycleStatus', $task->id)
+            ->assertDispatched('task-status-updated');
+        $this->assertSame(TaskStatus::InProgress, $task->refresh()->status);
+
+        $component->call('cycleStatus', $task->id);
+        $this->assertSame(TaskStatus::Completed, $task->refresh()->status);
+
+        $component->call('cycleStatus', $task->id);
+        $this->assertSame(TaskStatus::Pending, $task->refresh()->status);
+        $this->assertDatabaseCount('task_histories', 4);
+    }
+
+    public function test_inline_controls_cannot_change_task_from_another_team(): void
+    {
+        $team = Team::factory()->create();
+        $otherTeam = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+        $otherTask = Task::factory()->forTeam($otherTeam)->create([
+            'title' => 'Tarefa protegida',
+            'is_urgent' => false,
+            'status' => TaskStatus::Pending,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('startInlineEdit', $otherTask->id, 'title')
+            ->assertSet('inlineEditingTaskId', null)
+            ->call('toggleInlineUrgency', $otherTask->id)
+            ->call('cycleStatus', $otherTask->id);
+
+        $otherTask->refresh();
+
+        $this->assertSame('Tarefa protegida', $otherTask->title);
+        $this->assertFalse($otherTask->is_urgent);
+        $this->assertSame(TaskStatus::Pending, $otherTask->status);
+    }
+
     public function test_can_create_task_via_livewire(): void
     {
         $team = Team::factory()->create();
@@ -257,7 +371,7 @@ class TaskLivewireTest extends TestCase
     public function test_quick_category_creation_uses_admin_name_rules(): void
     {
         $team = Team::factory()->create();
-        $user = User::factory()->forTeam($team)->create();
+        $user = User::factory()->admin()->forTeam($team)->create();
 
         Livewire::actingAs($user)
             ->test(TaskManager::class, ['team' => $team])
@@ -269,6 +383,30 @@ class TaskLivewireTest extends TestCase
             ->assertHasErrors(['newCategoryName' => 'max']);
 
         $this->assertDatabaseCount('categories', 0);
+    }
+
+    public function test_team_user_can_select_categories_but_cannot_create_them(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        $this->actingAs($user)
+            ->get(route('teams.tasks', $team))
+            ->assertOk()
+            ->assertSee($category->name)
+            ->assertDontSee('+ Criar nova categoria...');
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('newCategoryName', 'Categoria indevida')
+            ->call('createNewCategory')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('categories', [
+            'team_id' => $team->id,
+            'name' => 'Categoria indevida',
+        ]);
     }
 
     public function test_invalid_status_is_rejected_by_status_endpoint(): void

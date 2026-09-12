@@ -13,6 +13,11 @@ use Illuminate\Support\Collection;
 
 class EloquentTeamRepository implements TeamRepository
 {
+    public function countActive(): int
+    {
+        return Team::query()->count();
+    }
+
     public function paginate(string $search = '', int $perPage = 10): LengthAwarePaginator
     {
         return Team::query()

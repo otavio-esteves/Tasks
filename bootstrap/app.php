@@ -11,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // TrustProxies reads the explicit, environment-specific configuration.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

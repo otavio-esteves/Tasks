@@ -186,6 +186,91 @@ class TaskDomainTest extends TestCase
         ]);
     }
 
+    public function test_updating_only_task_fields_preserves_checklist_ids_timestamps_and_history(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create();
+        $category = Category::factory()->create(['team_id' => $team->id]);
+        $task = Task::factory()->forTeam($team)->create(['category_id' => $category->id]);
+        $task->checklistItems()->createMany([
+            ['label' => 'Primeiro item', 'is_completed' => false, 'sort_order' => 0],
+            ['label' => 'Segundo item', 'is_completed' => true, 'sort_order' => 1],
+        ]);
+
+        $task = $task->fresh(['checklistItems', 'histories']);
+        $idsBefore = $task->checklistItems->pluck('id')->all();
+        $timestampsBefore = $task->checklistItems
+            ->map(fn ($item): array => [$item->created_at->toISOString(), $item->updated_at->toISOString()])
+            ->all();
+        $current = UpdateTaskData::fromTask($task);
+
+        $updated = app(UpdateTask::class)->handle(
+            $team->id,
+            $user->id,
+            $task->id,
+            UpdateTaskData::fromArray([
+                ...$current->toPersistenceArray(),
+                'title' => 'Título alterado sem tocar na checklist',
+                'checklist_items' => $current->checklistItemsForMutation(),
+            ]),
+        );
+
+        $this->assertSame($idsBefore, $updated->checklistItems->pluck('id')->all());
+        $this->assertSame($timestampsBefore, $updated->checklistItems
+            ->map(fn ($item): array => [$item->created_at->toISOString(), $item->updated_at->toISOString()])
+            ->all());
+        $this->assertCount(1, $updated->histories);
+        $this->assertArrayNotHasKey('checklist', $updated->histories->first()->metadata ?? []);
+    }
+
+    public function test_checklist_sync_tracks_duplicate_items_by_id(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create();
+        $category = Category::factory()->create(['team_id' => $team->id]);
+        $task = Task::factory()->forTeam($team)->create(['category_id' => $category->id]);
+        $items = $task->checklistItems()->createMany([
+            ['label' => 'Item repetido', 'is_completed' => false, 'sort_order' => 0],
+            ['label' => 'Item repetido', 'is_completed' => false, 'sort_order' => 1],
+        ]);
+
+        $updated = app(UpdateTask::class)->handle(
+            $team->id,
+            $user->id,
+            $task->id,
+            UpdateTaskData::fromArray([
+                'title' => $task->title,
+                'location' => $task->location,
+                'category_id' => $category->id,
+                'due_date' => null,
+                'is_urgent' => (bool) $task->is_urgent,
+                'observation' => $task->observation,
+                'checklist_items' => [
+                    [
+                        'id' => $items[1]->id,
+                        'label' => 'Item repetido',
+                        'is_completed' => true,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'label' => 'Item repetido',
+                        'is_completed' => false,
+                        'sort_order' => 1,
+                    ],
+                ],
+            ]),
+        );
+
+        $this->assertCount(2, $updated->checklistItems);
+        $this->assertSame($items[1]->id, $updated->checklistItems[0]->id);
+        $this->assertTrue($updated->checklistItems[0]->is_completed);
+        $this->assertNotSame($items[0]->id, $updated->checklistItems[1]->id);
+        $this->assertDatabaseMissing('task_checklists', ['id' => $items[0]->id]);
+        $this->assertStringContainsString("Item 'Item repetido' removido", $updated->histories->first()->description);
+        $this->assertStringContainsString("Item 'Item repetido' concluído", $updated->histories->first()->description);
+        $this->assertStringContainsString("Item 'Item repetido' adicionado", $updated->histories->first()->description);
+    }
+
     public function test_empty_checklist_labels_are_ignored(): void
     {
         $user = User::factory()->create();
@@ -312,7 +397,7 @@ class TaskDomainTest extends TestCase
             'status' => TaskStatus::Pending,
         ]);
 
-        $task->checklistItems()->createMany([
+        $items = $task->checklistItems()->createMany([
             ['label' => 'Item 1', 'is_completed' => false],
             ['label' => 'Item 2', 'is_completed' => true],
         ]);
@@ -327,8 +412,8 @@ class TaskDomainTest extends TestCase
             'isUrgent' => true,
             'observation' => 'Observacao',
             'checklistItems' => [
-                ['label' => 'Item 1', 'is_completed' => false],
-                ['label' => 'Item 2', 'is_completed' => true],
+                ['id' => $items[0]->id, 'label' => 'Item 1', 'is_completed' => false, 'sort_order' => 0],
+                ['id' => $items[1]->id, 'label' => 'Item 2', 'is_completed' => true, 'sort_order' => 0],
             ],
             'historyItems' => [],
         ], $data->toFormState());
@@ -397,6 +482,31 @@ class TaskDomainTest extends TestCase
         $this->assertSame('Status alterado de Pendente para Em andamento.', $history->description);
         $this->assertSame('pending', $history->metadata['status']['from']);
         $this->assertSame('in_progress', $history->metadata['status']['to']);
+    }
+
+    public function test_change_task_status_does_not_update_or_add_history_when_status_is_unchanged(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create();
+        $task = Task::factory()->forTeam($team)->create([
+            'status' => TaskStatus::Pending,
+        ]);
+        $task->histories()->create([
+            'description' => 'Historico existente.',
+            'user_id' => $user->id,
+        ]);
+        $originalUpdatedAt = $task->updated_at;
+
+        $unchanged = app(ChangeTaskStatus::class)->handle(
+            $team->id,
+            $user->id,
+            $task->id,
+            TaskStatus::Pending,
+        );
+
+        $this->assertSame(TaskStatus::Pending, $unchanged->status);
+        $this->assertTrue($originalUpdatedAt->equalTo($task->fresh()->updated_at));
+        $this->assertSame(1, $task->histories()->count());
     }
 
     public function test_task_code_is_unique_even_with_soft_deletes(): void

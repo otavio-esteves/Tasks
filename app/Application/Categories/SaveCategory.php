@@ -24,7 +24,7 @@ class SaveCategory
         if ($category !== null
             && $category->team_id !== $data->teamId
             && $this->categories->hasActiveTasks($category)) {
-            throw new CategoryHasActiveTasks;
+            throw CategoryHasActiveTasks::preventsMoving();
         }
 
         if ($this->categories->slugExistsForTeam($data->teamId, $slug, $category?->id)) {

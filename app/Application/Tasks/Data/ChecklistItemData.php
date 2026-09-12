@@ -10,10 +10,11 @@ final readonly class ChecklistItemData
         public string $label,
         public bool $isCompleted,
         public int $sortOrder,
+        public ?int $id = null,
     ) {}
 
     /**
-     * @param  array{label?:string|null,is_completed?:bool,sort_order?:int}  $data
+     * @param  array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}  $data
      */
     public static function fromArray(array $data, int $defaultSortOrder): ?self
     {
@@ -27,6 +28,7 @@ final readonly class ChecklistItemData
             label: $label,
             isCompleted: (bool) ($data['is_completed'] ?? false),
             sortOrder: isset($data['sort_order']) ? (int) $data['sort_order'] : $defaultSortOrder,
+            id: isset($data['id']) ? (int) $data['id'] : null,
         );
     }
 
@@ -36,6 +38,7 @@ final readonly class ChecklistItemData
             label: $item->label,
             isCompleted: (bool) $item->is_completed,
             sortOrder: $item->sort_order,
+            id: $item->id,
         );
     }
 
@@ -52,13 +55,15 @@ final readonly class ChecklistItemData
     }
 
     /**
-     * @return array{label:string,is_completed:bool}
+     * @return array{id:int|null,label:string,is_completed:bool,sort_order:int}
      */
     public function toFormState(): array
     {
         return [
+            'id' => $this->id,
             'label' => $this->label,
             'is_completed' => $this->isCompleted,
+            'sort_order' => $this->sortOrder,
         ];
     }
 

@@ -35,7 +35,7 @@ abstract readonly class TaskMutationData
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null,
-     *     checklist_items?:array<int, array{label?:string|null,is_completed?:bool,sort_order?:int}>
+     *     checklist_items?:array<int, array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}>
      * }  $data
      */
     public static function fromArray(array $data): static
@@ -110,6 +110,17 @@ abstract readonly class TaskMutationData
     }
 
     /**
+     * @return list<array{id:int|null,label:string,is_completed:bool,sort_order:int}>
+     */
+    public function checklistItemsForMutation(): array
+    {
+        return array_map(
+            fn (ChecklistItemData $item) => $item->toFormState(),
+            $this->checklistItems,
+        );
+    }
+
+    /**
      * @return array{
      *     title:string,
      *     location:string,
@@ -117,7 +128,7 @@ abstract readonly class TaskMutationData
      *     dueDate:string,
      *     isUrgent:bool,
      *     observation:string,
-     *     checklistItems:list<array{label:string,is_completed:bool}>,
+     *     checklistItems:list<array{id:int|null,label:string,is_completed:bool,sort_order:int}>,
      *     historyItems:list<array{description:string,created_at:string|null,user_name:string|null,metadata:array|null}>
      * }
      */
@@ -130,10 +141,7 @@ abstract readonly class TaskMutationData
             'dueDate' => $this->dueDate ?? '',
             'isUrgent' => $this->isUrgent,
             'observation' => $this->observation ?? '',
-            'checklistItems' => array_map(
-                fn (ChecklistItemData $item) => $item->toFormState(),
-                $this->checklistItems,
-            ),
+            'checklistItems' => $this->checklistItemsForMutation(),
             'historyItems' => array_map(
                 fn (HistoryItemData $item) => $item->toFormState(),
                 $this->historyItems,
@@ -142,7 +150,7 @@ abstract readonly class TaskMutationData
     }
 
     /**
-     * @param  array<int, array{label?:string|null,is_completed?:bool,sort_order?:int}>  $items
+     * @param  array<int, array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}>  $items
      * @return list<ChecklistItemData>
      */
     private static function normalizeChecklistItems(array $items): array

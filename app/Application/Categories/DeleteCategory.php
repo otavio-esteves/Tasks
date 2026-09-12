@@ -3,6 +3,7 @@
 namespace App\Application\Categories;
 
 use App\Application\Categories\Contracts\CategoryRepository;
+use App\Domain\Categories\Exceptions\CategoryHasActiveTasks;
 
 class DeleteCategory
 {
@@ -13,6 +14,12 @@ class DeleteCategory
 
     public function handle(int $categoryId): void
     {
-        $this->categories->delete($this->getCategory->handle($categoryId));
+        $category = $this->getCategory->handle($categoryId);
+
+        if ($this->categories->hasActiveTasks($category)) {
+            throw CategoryHasActiveTasks::preventsDeletion();
+        }
+
+        $this->categories->delete($category);
     }
 }

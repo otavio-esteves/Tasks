@@ -19,7 +19,7 @@ class CategoryPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->isAdmin();
     }
 
     public function update(User $user, Category $category): bool

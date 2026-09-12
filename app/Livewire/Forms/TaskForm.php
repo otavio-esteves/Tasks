@@ -35,8 +35,10 @@ class TaskForm extends Form
     public string $newChecklistItem = '';
 
     #[Validate([
+        'checklistItems.*.id' => 'nullable|integer',
         'checklistItems.*.label' => 'nullable|string|max:255',
         'checklistItems.*.is_completed' => 'boolean',
+        'checklistItems.*.sort_order' => 'integer|min:0',
     ])]
     public array $checklistItems = [];
 
@@ -73,8 +75,10 @@ class TaskForm extends Form
         }
 
         $this->checklistItems[] = [
+            'id' => null,
             'label' => $label,
             'is_completed' => false,
+            'sort_order' => $this->nextChecklistSortOrder(),
         ];
 
         $this->newChecklistItem = '';
@@ -109,14 +113,14 @@ class TaskForm extends Form
     }
 
     /**
-     * @param  array<int, array{label?:string|null,is_completed?:bool}>  $items
-     * @return list<array{label:string,is_completed:bool}>
+     * @param  array<int, array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}>  $items
+     * @return list<array{id:int|null,label:string,is_completed:bool,sort_order:int}>
      */
     public function normalizeChecklistItems(array $items): array
     {
         $normalized = [];
 
-        foreach (array_values($items) as $item) {
+        foreach (array_values($items) as $index => $item) {
             $label = trim((string) ($item['label'] ?? ''));
 
             if ($label === '') {
@@ -124,11 +128,25 @@ class TaskForm extends Form
             }
 
             $normalized[] = [
+                'id' => isset($item['id']) ? (int) $item['id'] : null,
                 'label' => $label,
                 'is_completed' => (bool) ($item['is_completed'] ?? false),
+                'sort_order' => isset($item['sort_order']) ? (int) $item['sort_order'] : $index,
             ];
         }
 
         return $normalized;
+    }
+
+    private function nextChecklistSortOrder(): int
+    {
+        if ($this->checklistItems === []) {
+            return 0;
+        }
+
+        return max(array_map(
+            fn (array $item): int => (int) ($item['sort_order'] ?? 0),
+            $this->checklistItems,
+        )) + 1;
     }
 }

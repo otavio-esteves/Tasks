@@ -36,6 +36,8 @@ class TaskManager extends Component
 {
     use AuthorizesRequests, InteractsWithFriendlyExceptions, WithPagination;
 
+    private const INLINE_EDITABLE_FIELDS = ['title', 'location', 'category_id', 'due_date'];
+
     public Team $team;
 
     public TaskForm $form;
@@ -53,6 +55,12 @@ class TaskManager extends Component
     public string $newCategoryName = '';
 
     public bool $showCategoryModal = false;
+
+    public ?int $inlineEditingTaskId = null;
+
+    public string $inlineEditingField = '';
+
+    public mixed $inlineEditValue = null;
 
     public function mount(Team $team): void
     {
@@ -93,6 +101,7 @@ class TaskManager extends Component
 
     public function openCategoryModal(): void
     {
+        $this->authorize('create', Category::class);
         $this->newCategoryName = '';
         $this->showCategoryModal = true;
     }
@@ -232,6 +241,120 @@ class TaskManager extends Component
         }
     }
 
+    public function cycleStatus(
+        int $id,
+        ?GetTask $getTask = null,
+        ?ChangeTaskStatus $changeTaskStatus = null
+    ): void {
+        $getTask = $getTask ?? app(GetTask::class);
+        $changeTaskStatus = $changeTaskStatus ?? app(ChangeTaskStatus::class);
+
+        try {
+            $task = $getTask->handle($this->team->id, $id);
+            $this->authorize('update', $task);
+
+            $statuses = TaskStatus::cases();
+            $currentIndex = array_search($task->status, $statuses, true);
+            $nextStatus = $statuses[((int) $currentIndex + 1) % count($statuses)];
+
+            $changeTaskStatus->handle($this->team->id, auth()->id(), $id, $nextStatus);
+            $this->dispatch('task-status-updated');
+        } catch (InvalidTaskCategory|InvalidTaskStatusTransition|TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
+        }
+    }
+
+    public function startInlineEdit(int $id, string $field, ?GetTask $getTask = null): void
+    {
+        if (! in_array($field, self::INLINE_EDITABLE_FIELDS, true)) {
+            return;
+        }
+
+        $getTask = $getTask ?? app(GetTask::class);
+
+        try {
+            $task = $getTask->handle($this->team->id, $id);
+            $this->authorize('update', $task);
+            $data = UpdateTaskData::fromTask($task);
+
+            $this->inlineEditingTaskId = $id;
+            $this->inlineEditingField = $field;
+            $this->inlineEditValue = match ($field) {
+                'title' => $data->title,
+                'location' => $data->location ?? '',
+                'category_id' => $data->categoryId,
+                'due_date' => $data->dueDate ?? '',
+            };
+
+            $this->resetErrorBag('inlineEditValue');
+        } catch (TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel editar esta informacao agora.', 'error');
+        }
+    }
+
+    public function saveInlineEdit(?GetTask $getTask = null, ?UpdateTask $updateTask = null): void
+    {
+        if ($this->inlineEditingTaskId === null || ! in_array($this->inlineEditingField, self::INLINE_EDITABLE_FIELDS, true)) {
+            return;
+        }
+
+        $validated = Validator::make(
+            ['inlineEditValue' => $this->inlineEditValue],
+            ['inlineEditValue' => $this->inlineValidationRules()],
+        )->validate();
+
+        $getTask = $getTask ?? app(GetTask::class);
+        $updateTask = $updateTask ?? app(UpdateTask::class);
+
+        try {
+            $task = $getTask->handle($this->team->id, $this->inlineEditingTaskId);
+            $this->authorize('update', $task);
+
+            $data = $this->taskDataWithOverride($task, $this->inlineEditingField, $validated['inlineEditValue'] ?? null);
+            $updateTask->handle($this->team->id, auth()->id(), $task->id, $data);
+
+            $this->cancelInlineEdit();
+            $this->dispatch('task-inline-updated');
+        } catch (InvalidTaskCategory|TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel salvar esta informacao agora.', 'error');
+        }
+    }
+
+    public function toggleInlineUrgency(
+        int $id,
+        ?GetTask $getTask = null,
+        ?UpdateTask $updateTask = null
+    ): void {
+        $getTask = $getTask ?? app(GetTask::class);
+        $updateTask = $updateTask ?? app(UpdateTask::class);
+
+        try {
+            $task = $getTask->handle($this->team->id, $id);
+            $this->authorize('update', $task);
+
+            $data = $this->taskDataWithOverride($task, 'is_urgent', ! $task->is_urgent);
+            $updateTask->handle($this->team->id, auth()->id(), $task->id, $data);
+
+            $this->dispatch('task-inline-updated');
+        } catch (InvalidTaskCategory|TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel atualizar a prioridade agora.', 'error');
+        }
+    }
+
+    public function cancelInlineEdit(): void
+    {
+        $this->reset(['inlineEditingTaskId', 'inlineEditingField', 'inlineEditValue']);
+        $this->resetErrorBag('inlineEditValue');
+    }
+
     public function save(
         ?GetTask $getTask = null,
         ?CreateTask $createTask = null,
@@ -315,7 +438,7 @@ class TaskManager extends Component
 
     public function applyQuickFilter(string $filter): void
     {
-        $this->quickFilter = $filter === 'total' || $this->quickFilter === $filter
+        $this->quickFilter = $this->quickFilter === $filter
             ? ''
             : $filter;
 
@@ -399,5 +522,35 @@ class TaskManager extends Component
         $this->form->checklistItems = $toState['checklistItems'];
         $this->form->historyItems = $toState['historyItems'];
         $this->form->originalChecklistItems = $this->form->normalizeChecklistItems($this->form->checklistItems);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function inlineValidationRules(): array
+    {
+        return match ($this->inlineEditingField) {
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'category_id' => [
+                'required',
+                'integer',
+                'exists:categories,id,deleted_at,NULL',
+            ],
+            'due_date' => ['nullable', 'date_format:Y-m-d'],
+            default => [],
+        };
+    }
+
+    private function taskDataWithOverride(Task $task, string $field, mixed $value): UpdateTaskData
+    {
+        $current = UpdateTaskData::fromTask($task);
+        $state = [
+            ...$current->toPersistenceArray(),
+            'checklist_items' => $current->checklistItemsForMutation(),
+        ];
+        $state[$field] = $value;
+
+        return UpdateTaskData::fromArray($state);
     }
 }

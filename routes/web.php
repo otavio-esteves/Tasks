@@ -1,6 +1,7 @@
 <?php
 
 use App\Application\Auth\ResolveUserHomeRoute;
+use App\Application\Dashboard\Queries\GetDashboardCounters;
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\TeamManager;
 use App\Livewire\Team\TaskManager;
@@ -23,7 +24,10 @@ Route::get('/', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
+    Route::get('/dashboard', function (
+        ResolveUserHomeRoute $resolveUserHomeRoute,
+        GetDashboardCounters $getDashboardCounters,
+    ) {
         /** @var User $user */
         $user = auth()->user();
         $target = $resolveUserHomeRoute->handle($user);
@@ -32,7 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route($target->routeName, $target->parameters);
         }
 
-        return view('dashboard');
+        return view('dashboard', [
+            'counters' => $getDashboardCounters->handle(),
+        ]);
     })->middleware(['auth', 'verified'])->name('dashboard');
 
     Route::view('profile', 'profile')->name('profile');

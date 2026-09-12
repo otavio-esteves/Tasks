@@ -9,6 +9,11 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class EloquentCategoryRepository implements CategoryRepository
 {
+    public function countActive(): int
+    {
+        return Category::query()->count();
+    }
+
     public function belongsToTeam(int $categoryId, int $teamId): bool
     {
         return Category::query()

@@ -10,6 +10,8 @@ use App\Models\Task;
 
 interface TaskRepository
 {
+    public function countActivePending(): int;
+
     public function createForTeam(int $teamId, int $userId, CreateTaskData $data): Task;
 
     public function findByIdForTeam(int $teamId, int $taskId): ?Task;
