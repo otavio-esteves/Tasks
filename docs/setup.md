@@ -39,7 +39,7 @@ O nome padrão é **Tasks**. `APP_NAME` permite personalizar o nome mostrado no 
 
 ## Atualizar uma instalação existente
 
-**Atualização de segurança:** a migration de privilégio administrativo não promove contas antigas automaticamente. Antes do deploy, identifique os administradores legítimos; após migrar, conceda o acesso explicitamente com `sail artisan users:admin email@example.com`. A conta deve ter o e-mail verificado. Veja [o procedimento completo](security.md).
+**Atualização de segurança:** a migration de privilégio administrativo não promove contas antigas automaticamente. Antes do deploy, identifique os administradores legítimos; após migrar, conceda o acesso explicitamente com `sail artisan users:admin email@example.com`. Não é necessário verificar o e-mail. Veja [o procedimento completo](security.md).
 
 Mantenha o `.env` e as credenciais do banco existentes. Altere `APP_NAME` para `Tasks` e execute:
 

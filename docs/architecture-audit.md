@@ -113,7 +113,7 @@ Esses pontos não foram movidos porque hoje não configuram regra complexa de ap
 As limitações abaixo ainda existem ou não foram atacadas porque não eram necessárias para o estado atual:
 
 - o projeto não usa uma ferramenta especializada de testes de arquitetura; os guards atuais são leves e baseados em scan;
-- a decisão de destino pós-login continua distribuída entre fluxo de autenticação e rota `/dashboard`;
+- a decisão de destino pós-login está centralizada em `ResolveUserHomeRoute`, direcionando para tarefas e usando a gestão de equipes apenas quando um administrador ainda não possui equipe disponível;
 - há documentação histórica em `docs/` que serve como referência antiga, não como fonte oficial do estado atual.
 
 ## 5. Fonte oficial para evolução

@@ -13,7 +13,7 @@ O Tasks organiza demandas de qualquer organização por equipes e categorias, co
 - O histórico registra criação, alterações e transições de status com o usuário responsável.
 - A listagem oferece busca, paginação, filtros e contadores por equipe.
 - Tarefas, equipes e categorias usam exclusão lógica.
-- As telas protegidas exigem autenticação e e-mail verificado.
+- As telas protegidas exigem autenticação; não há exigência de verificação de e-mail.
 
 ## Tecnologia e integridade
 

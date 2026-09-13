@@ -2,7 +2,7 @@
 
 ## Base atual
 
-- Laravel 12 e Livewire 3 com autenticação e verificação de e-mail.
+- Laravel 12 e Livewire 3 com autenticação sem exigência de verificação de e-mail.
 - Casos de uso e DTOs para equipes, categorias e tarefas.
 - Repositórios Eloquent, policies, checklists, histórico e filtros.
 - Testes de domínio, interface, autorização e arquitetura.

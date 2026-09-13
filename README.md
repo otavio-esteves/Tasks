@@ -75,7 +75,7 @@ Isso significa que:
 - `usuário de equipe`: usuário vinculado a uma `team`.
 - `aguardando acesso`: usuário sem equipe e sem privilégio administrativo.
 
-O cadastro público nunca concede privilégios administrativos nem escolhe uma equipe. A verificação de e-mail também não concede esses acessos. Consulte [o procedimento de segurança](docs/security.md) antes de atualizar instalações existentes.
+O cadastro público nunca concede privilégios administrativos nem escolhe uma equipe. O acesso não exige verificação de e-mail; equipe e privilégio administrativo continuam definidos explicitamente. Consulte [o procedimento de segurança](docs/security.md) antes de atualizar instalações existentes.
 
 Regras atuais:
 

@@ -2,7 +2,7 @@
 
 ## Privilégio administrativo
 
-`users.is_admin` é falso por padrão e não pode ser preenchido via mass assignment. A ausência de equipe, a criação de uma conta ou a verificação do e-mail não tornam ninguém administrador.
+`users.is_admin` é falso por padrão e não pode ser preenchido via mass assignment. A ausência de equipe ou a criação de uma conta não tornam ninguém administrador. O sistema não exige verificação de e-mail.
 
 Uma conta sem equipe e sem privilégio administrativo é encaminhada para `/aguardando-acesso`. Ela pode gerenciar o próprio perfil, mas não visualizar equipes, categorias ou tarefas da organização. O vínculo com uma equipe permite somente o acesso previsto nas policies existentes.
 
@@ -12,14 +12,14 @@ O modelo anterior considerava qualquer conta sem equipe como administradora, inc
 
 A migration `2026_09_06_000000_add_explicit_admin_privilege_to_users` não copia esse privilégio implícito. Todos os usuários começam com `is_admin = false`, mantendo seus registros e vínculos com equipes. Os administradores legítimos precisam ser reautorizados pelo operador do servidor.
 
-Antes do deploy, identifique as contas administrativas aprovadas e confirme que seus e-mails estão verificados. Execute as migrations e faça a concessão explícita:
+Antes do deploy, identifique as contas administrativas aprovadas. Execute as migrations e faça a concessão explícita:
 
 ```bash
 ./vendor/bin/sail artisan migrate
 ./vendor/bin/sail artisan users:admin admin@example.com
 ```
 
-O comando atua somente sobre uma conta existente e com e-mail verificado. Não cria usuários, não redefine senhas e não altera a equipe. Não há endpoint HTTP para executá-lo. Em instalações novas, cadastre a conta por `/register`, verifique o e-mail e então execute o comando no servidor.
+O comando atua somente sobre uma conta existente. Não cria usuários, não redefine senhas e não altera a equipe. Não há endpoint HTTP para executá-lo. Em instalações novas, cadastre a conta por `/register` e então execute o comando no servidor.
 
 Para revogar o privilégio:
 
@@ -27,7 +27,7 @@ Para revogar o privilégio:
 ./vendor/bin/sail artisan users:admin admin@example.com --revoke
 ```
 
-A revogação funciona mesmo se o e-mail não estiver mais verificado. Se a conta tiver uma equipe, continua sujeita às permissões dessa equipe.
+A revogação preserva o vínculo existente. Se a conta tiver uma equipe, continua sujeita às permissões dessa equipe.
 
 ## Vínculo com uma equipe
 

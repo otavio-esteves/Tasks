@@ -209,7 +209,7 @@ No Livewire, o projeto hoje usa o trait:
 
 ### Entrada
 
-- rota protegida por `auth`, `verified` e `can('view', 'team')`;
+- rota protegida por `auth` e `can('view', 'team')`;
 - `TaskManager` valida acesso adicional com policy.
 
 ### Listagem
