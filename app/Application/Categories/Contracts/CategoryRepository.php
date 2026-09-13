@@ -8,8 +8,6 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface CategoryRepository
 {
-    public function countActive(): int;
-
     public function belongsToTeam(int $categoryId, int $teamId): bool;
 
     public function paginate(string $search = '', int $perPage = 10): LengthAwarePaginator;

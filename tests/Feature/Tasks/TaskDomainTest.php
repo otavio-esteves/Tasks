@@ -9,6 +9,7 @@ use App\Application\Tasks\Data\UpdateTaskData;
 use App\Application\Tasks\DeleteTask;
 use App\Application\Tasks\GetTask;
 use App\Application\Tasks\UpdateTask;
+use App\Domain\Tasks\Exceptions\InvalidTaskAssignees;
 use App\Domain\Tasks\Exceptions\InvalidTaskCategory;
 use App\Domain\Tasks\Exceptions\TaskNotFound;
 use App\Domain\Tasks\TaskStatus;
@@ -94,6 +95,39 @@ class TaskDomainTest extends TestCase
             'is_completed' => true,
             'sort_order' => 1,
         ]);
+    }
+
+    public function test_task_can_be_assigned_only_to_users_from_its_team(): void
+    {
+        $team = Team::factory()->create();
+        $otherTeam = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $author = User::factory()->forTeam($team)->create();
+        $assignee = User::factory()->forTeam($team)->create();
+        $outsider = User::factory()->forTeam($otherTeam)->create();
+
+        $task = app(CreateTask::class)->handle($team->id, $author->id, CreateTaskData::fromArray([
+            'title' => 'Tarefa com responsáveis',
+            'location' => null,
+            'category_id' => $category->id,
+            'due_date' => null,
+            'is_urgent' => false,
+            'observation' => null,
+            'assignee_ids' => [$assignee->id],
+        ]));
+
+        $this->assertSame([$assignee->id], $task->assignees->pluck('id')->all());
+
+        $this->expectException(InvalidTaskAssignees::class);
+        app(UpdateTask::class)->handle($team->id, $author->id, $task->id, UpdateTaskData::fromArray([
+            'title' => $task->title,
+            'location' => null,
+            'category_id' => $category->id,
+            'due_date' => null,
+            'is_urgent' => false,
+            'observation' => null,
+            'assignee_ids' => [$outsider->id],
+        ]));
     }
 
     public function test_update_task_preserves_existing_status(): void
@@ -416,6 +450,7 @@ class TaskDomainTest extends TestCase
                 ['id' => $items[1]->id, 'label' => 'Item 2', 'is_completed' => true, 'sort_order' => 0],
             ],
             'historyItems' => [],
+            'assigneeIds' => [],
         ], $data->toFormState());
     }
 

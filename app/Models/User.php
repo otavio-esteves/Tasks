@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -13,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $team_id
  * @property bool $is_admin
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -61,6 +61,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /** @return BelongsToMany<Task, $this> */
+    public function assignedTasks(): BelongsToMany
+    {
+        return $this->belongsToMany(Task::class)->withTimestamps();
     }
 
     public function isAdmin(): bool

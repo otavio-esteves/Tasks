@@ -1,7 +1,7 @@
 <?php
 
 use App\Application\Auth\ResolveUserHomeRoute;
-use App\Application\Dashboard\Queries\GetDashboardCounters;
+use App\Http\Controllers\GeneralTaskReportController;
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\TeamManager;
 use App\Livewire\Team\TaskManager;
@@ -23,24 +23,7 @@ Route::get('/', function (ResolveUserHomeRoute $resolveUserHomeRoute) {
     return redirect()->route($target->routeName, $target->parameters);
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function (
-        ResolveUserHomeRoute $resolveUserHomeRoute,
-        GetDashboardCounters $getDashboardCounters,
-    ) {
-        /** @var User $user */
-        $user = auth()->user();
-        $target = $resolveUserHomeRoute->handle($user);
-
-        if ($target->routeName !== 'dashboard') {
-            return redirect()->route($target->routeName, $target->parameters);
-        }
-
-        return view('dashboard', [
-            'counters' => $getDashboardCounters->handle(),
-        ]);
-    })->middleware(['auth', 'verified'])->name('dashboard');
-
+Route::middleware('auth')->group(function () {
     Route::view('profile', 'profile')->name('profile');
 
     Route::view('/aguardando-acesso', 'auth.pending-access')->name('access.pending');
@@ -58,6 +41,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/equipes/{team}/tarefas', TaskManager::class)
         ->can('view', 'team')
         ->name('teams.tasks');
+
+    Route::get('/equipes/{team}/relatorios/geral', GeneralTaskReportController::class)
+        ->can('view', 'team')
+        ->name('teams.reports.general');
 
     // Keep existing bookmarks usable during the transition to Tasks.
     Route::get('/admin/secretarias', fn () => redirect()->route('admin.teams'))

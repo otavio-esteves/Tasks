@@ -17,7 +17,7 @@ class AdministratorAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registered_user_cannot_access_organization_data_even_after_email_verification(): void
+    public function test_registered_user_without_email_verification_remains_limited_by_authorization(): void
     {
         $team = Team::factory()->create(['name' => 'Private team']);
 
@@ -33,11 +33,7 @@ class AdministratorAccessTest extends TestCase
         $user = User::query()->where('email', 'new@example.com')->firstOrFail();
         $this->assertFalse($user->isAdmin());
         $this->assertNull($user->team_id);
-        $this->actingAs($user)->get(route('access.pending'))->assertRedirect(route('verification.notice'));
-        $user->markEmailAsVerified();
-
         $this->actingAs($user)->get('/')->assertRedirect(route('access.pending'));
-        $this->get(route('dashboard'))->assertRedirect(route('access.pending'));
         $this->get(route('access.pending'))->assertOk()->assertDontSee('Private team');
         $this->get(route('profile'))->assertOk();
         $this->get(route('admin.teams'))->assertForbidden();
@@ -71,7 +67,6 @@ class AdministratorAccessTest extends TestCase
         $this->assertNull($user->team_id);
         $this->assertFalse($user->isAdmin());
         $this->actingAs($user)->get(route('admin.teams'))->assertForbidden();
-        $this->get(route('dashboard'))->assertRedirect(route('access.pending'));
     }
 
     public function test_migration_does_not_trust_legacy_accounts_without_a_team(): void

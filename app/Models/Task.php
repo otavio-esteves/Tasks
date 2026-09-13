@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Domain\Tasks\Exceptions\InvalidTaskStatusTransition;
 use App\Domain\Tasks\TaskStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -15,6 +17,7 @@ use Illuminate\Support\Str;
 /**
  * @property TaskStatus $status
  * @property int $team_id
+ * @property Carbon|null $due_date
  */
 class Task extends Model
 {
@@ -70,6 +73,12 @@ class Task extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return BelongsToMany<User, $this> */
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps()->orderBy('users.name')->orderBy('users.id');
     }
 
     /**

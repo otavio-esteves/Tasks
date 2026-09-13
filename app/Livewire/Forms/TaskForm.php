@@ -26,6 +26,12 @@ class TaskForm extends Form
     #[Validate('boolean')]
     public bool $isUrgent = false;
 
+    #[Validate([
+        'assigneeIds' => 'array',
+        'assigneeIds.*' => 'integer|distinct|exists:users,id',
+    ])]
+    public array $assigneeIds = [];
+
     #[Validate('nullable|string')]
     public string $observation = '';
 
@@ -56,6 +62,7 @@ class TaskForm extends Form
         $this->categoryId = $data['categoryId'];
         $this->dueDate = $data['dueDate'];
         $this->isUrgent = $data['isUrgent'];
+        $this->assigneeIds = $data['assigneeIds'];
         $this->observation = $data['observation'];
         $this->currentStatus = $task->status->value;
         $this->checklistItems = $data['checklistItems'];
@@ -98,6 +105,7 @@ class TaskForm extends Form
             'category_id' => $this->categoryId,
             'due_date' => $this->dueDate,
             'is_urgent' => $this->isUrgent,
+            'assignee_ids' => $this->assigneeIds,
             'observation' => $this->observation,
             'checklist_items' => $this->checklistItems,
         ];

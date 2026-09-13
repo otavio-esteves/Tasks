@@ -4,6 +4,7 @@ namespace App\Application\Tasks;
 
 use App\Application\Tasks\Contracts\TaskRepository;
 use App\Application\Tasks\Data\UpdateTaskData;
+use App\Application\Tasks\Validators\EnsureAssigneesBelongToTeam;
 use App\Application\Tasks\Validators\EnsureCategoryBelongsToTeam;
 use App\Models\Task;
 
@@ -11,6 +12,7 @@ class UpdateTask
 {
     public function __construct(
         private readonly EnsureCategoryBelongsToTeam $ensureCategoryBelongsToTeam,
+        private readonly EnsureAssigneesBelongToTeam $ensureAssigneesBelongToTeam,
         private readonly GetTask $getTask,
         private readonly TaskRepository $tasks,
     ) {}
@@ -18,6 +20,7 @@ class UpdateTask
     public function handle(int $teamId, int $userId, int $taskId, UpdateTaskData $data): Task
     {
         $this->ensureCategoryBelongsToTeam->handle($teamId, $data->categoryId);
+        $this->ensureAssigneesBelongToTeam->handle($teamId, $data->assigneeIds);
 
         $task = $this->getTask->handle($teamId, $taskId);
 

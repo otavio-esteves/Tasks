@@ -6,6 +6,7 @@ use App\Application\Tasks\Contracts\TaskRepository;
 use App\Application\Tasks\Data\ChecklistItemData;
 use App\Application\Tasks\Data\CreateTaskData;
 use App\Application\Tasks\Data\TaskListResult;
+use App\Application\Tasks\Data\TaskReportResult;
 use App\Application\Tasks\Data\UpdateTaskData;
 use App\Domain\Tasks\TaskStatus;
 use App\Models\Task;
@@ -15,13 +16,6 @@ use Illuminate\Support\Facades\DB;
 
 class EloquentTaskRepository implements TaskRepository
 {
-    public function countActivePending(): int
-    {
-        return Task::query()
-            ->where('status', TaskStatus::Pending->value)
-            ->count();
-    }
-
     public function createForTeam(int $teamId, int $userId, CreateTaskData $data): Task
     {
         return DB::transaction(function () use ($teamId, $userId, $data): Task {
@@ -34,19 +28,23 @@ class EloquentTaskRepository implements TaskRepository
                 $task->checklistItems()->createMany($data->checklistItemsForPersistence());
             }
 
+            if ($data->assigneeIds !== []) {
+                $task->assignees()->sync($data->assigneeIds);
+            }
+
             $task->histories()->create([
                 'description' => 'Tarefa criada.',
                 'user_id' => $userId,
             ]);
 
-            return $task->fresh(['category', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
         });
     }
 
     public function findByIdForTeam(int $teamId, int $taskId): ?Task
     {
         return Task::query()
-            ->with(['category', 'checklistItems', 'histories.user'])
+            ->with(['category', 'assignees', 'checklistItems', 'histories.user'])
             ->forTeam($teamId)
             ->whereKey($taskId)
             ->first();
@@ -58,6 +56,7 @@ class EloquentTaskRepository implements TaskRepository
             $original = $task->getOriginal();
 
             $oldChecklist = $this->checklistSnapshot($task);
+            $oldAssigneeIds = $task->assignees->pluck('id')->map(fn ($id): int => (int) $id)->sort()->values()->all();
 
             $task->fill($data->toPersistenceArray());
             $changes = $task->getDirty();
@@ -100,6 +99,13 @@ class EloquentTaskRepository implements TaskRepository
                 $metadata['category_id'] = ['from' => $original['category_id'] ?? '', 'to' => $changes['category_id'] ?? ''];
             }
 
+            $newAssigneeIds = collect($data->assigneeIds)->sort()->values()->all();
+            if ($oldAssigneeIds !== $newAssigneeIds) {
+                $task->assignees()->sync($newAssigneeIds);
+                $logs[] = 'Responsáveis pela tarefa atualizados.';
+                $metadata['assignee_ids'] = ['from' => $oldAssigneeIds, 'to' => $newAssigneeIds];
+            }
+
             $checklistLogs = $this->syncChecklist($task, $data);
             $logs = [...$logs, ...$checklistLogs];
             $newChecklist = $this->checklistSnapshotFromData($data);
@@ -116,7 +122,7 @@ class EloquentTaskRepository implements TaskRepository
                 ]);
             }
 
-            return $task->fresh(['category', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
         });
     }
 
@@ -221,7 +227,7 @@ class EloquentTaskRepository implements TaskRepository
                 ],
             ]);
 
-            return $task->fresh(['category', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
         });
     }
 
@@ -235,34 +241,31 @@ class EloquentTaskRepository implements TaskRepository
     public function listForTeam(int $teamId, string $search = '', array $filters = [], int $perPage = 15): TaskListResult
     {
         $categoryId = isset($filters['category_id']) ? (int) $filters['category_id'] : null;
+        $assigneeId = isset($filters['assignee_id']) ? (int) $filters['assignee_id'] : null;
         $status = $filters['status'] ?? null;
         $urgent = $filters['urgent'] ?? null;
         $quickFilter = $filters['quick_filter'] ?? null;
         $today = Carbon::today()->toDateString();
 
         $baseQuery = Task::query()
-            ->with('category')
+            ->with(['category', 'assignees'])
             ->forTeam($teamId)
             ->search($search)
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
+            ->when($assigneeId, fn ($query) => $query->whereHas('assignees', fn ($assignees) => $assignees->whereKey($assigneeId)))
             ->when($status !== null && $status !== '', fn ($query) => $query->where('status', $status))
             ->when($urgent !== null, fn ($query) => $query->where('is_urgent', (bool) $urgent));
 
         $listQuery = clone $baseQuery;
 
-        $listQuery->when($quickFilter === 'urgent', fn ($query) => $query->where('is_urgent', true))
+        $listQuery->when($quickFilter === 'urgent', fn ($query) => $query
+            ->where('is_urgent', true)
+            ->where('status', '!=', TaskStatus::Completed->value))
             ->when($quickFilter === 'in_progress', fn ($query) => $query->where('status', TaskStatus::InProgress->value))
             ->when($quickFilter === 'completed', fn ($query) => $query->where('status', TaskStatus::Completed->value))
             ->when($quickFilter === 'overdue', fn ($query) => $query
                 ->whereDate('due_date', '<', $today)
                 ->where('status', '!=', TaskStatus::Completed->value));
-
-        $isCompletedRequested = $status === TaskStatus::Completed->value
-            || in_array($quickFilter, ['completed', 'total'], true);
-
-        if (! $isCompletedRequested) {
-            $listQuery->where('status', '!=', TaskStatus::Completed->value);
-        }
 
         $tasks = $listQuery
             ->orderBy('created_at', 'desc')
@@ -286,5 +289,36 @@ class EloquentTaskRepository implements TaskRepository
         ];
 
         return new TaskListResult($tasks, $summary);
+    }
+
+    public function reportForTeam(int $teamId, array $filters = []): TaskReportResult
+    {
+        $assigneeId = isset($filters['assignee_id']) ? (int) $filters['assignee_id'] : null;
+        $dueFrom = $filters['due_from'] ?? null;
+        $dueTo = $filters['due_to'] ?? null;
+
+        $tasks = Task::query()
+            ->with(['category', 'assignees'])
+            ->forTeam($teamId)
+            ->when($assigneeId, fn ($query) => $query->whereHas('assignees', fn ($assignees) => $assignees->whereKey($assigneeId)))
+            ->when($dueFrom, fn ($query) => $query->whereDate('due_date', '>=', $dueFrom))
+            ->when($dueTo, fn ($query) => $query->whereDate('due_date', '<=', $dueTo))
+            ->orderByRaw('due_date IS NULL')
+            ->orderBy('due_date')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $today = Carbon::today();
+
+        return new TaskReportResult($tasks, [
+            'total' => $tasks->count(),
+            'pending' => $tasks->where('status', TaskStatus::Pending)->count(),
+            'in_progress' => $tasks->where('status', TaskStatus::InProgress)->count(),
+            'completed' => $tasks->where('status', TaskStatus::Completed)->count(),
+            'urgent' => $tasks->where('is_urgent', true)->where('status', '!=', TaskStatus::Completed)->count(),
+            'overdue' => $tasks->filter(fn (Task $task): bool => $task->due_date !== null
+                && $task->due_date->isBefore($today)
+                && $task->status !== TaskStatus::Completed)->count(),
+        ]);
     }
 }

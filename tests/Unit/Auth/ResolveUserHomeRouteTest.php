@@ -12,26 +12,37 @@ class ResolveUserHomeRouteTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_is_resolved_to_dashboard_route(): void
+    public function test_admin_without_team_is_resolved_to_first_team_tasks(): void
     {
+        $team = Team::factory()->create();
         $user = User::factory()->admin()->create();
 
         $target = app(ResolveUserHomeRoute::class)->handle($user);
 
-        $this->assertSame('dashboard', $target->routeName);
-        $this->assertSame([], $target->parameters);
+        $this->assertSame('teams.tasks', $target->routeName);
+        $this->assertSame(['team' => $team->id], $target->parameters);
     }
 
-    public function test_admin_linked_to_team_is_resolved_to_dashboard_route(): void
+    public function test_admin_linked_to_team_is_resolved_to_own_team_tasks(): void
     {
         $team = Team::factory()->create();
         $user = User::factory()->admin()->forTeam($team)->create();
 
         $target = app(ResolveUserHomeRoute::class)->handle($user);
 
-        $this->assertSame('dashboard', $target->routeName);
-        $this->assertSame([], $target->parameters);
+        $this->assertSame('teams.tasks', $target->routeName);
+        $this->assertSame(['team' => $team->id], $target->parameters);
         $this->assertSame($team->id, $user->team_id);
+    }
+
+    public function test_admin_without_available_team_is_resolved_to_team_management(): void
+    {
+        $user = User::factory()->admin()->create();
+
+        $target = app(ResolveUserHomeRoute::class)->handle($user);
+
+        $this->assertSame('admin.teams', $target->routeName);
+        $this->assertSame([], $target->parameters);
     }
 
     public function test_team_user_is_resolved_to_own_task_route(): void

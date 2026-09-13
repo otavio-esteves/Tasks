@@ -2,59 +2,32 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Team;
 use App\Models\User;
-use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_email_verification_screen_can_be_rendered(): void
+    public function test_unverified_team_user_can_access_the_application(): void
     {
-        $user = User::factory()->unverified()->create();
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->unverified()->create();
 
-        $response = $this->actingAs($user)->get('/verify-email');
+        $this->actingAs($user)
+            ->get(route('teams.tasks', $team))
+            ->assertOk();
 
-        $response
-            ->assertSeeVolt('pages.auth.verify-email')
-            ->assertStatus(200);
+        $this->get('/')->assertRedirect(route('teams.tasks', $team));
     }
 
-    public function test_email_can_be_verified(): void
+    public function test_email_verification_routes_are_not_available(): void
     {
         $user = User::factory()->unverified()->create();
 
-        Event::fake();
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)]
-        );
-
-        $response = $this->actingAs($user)->get($verificationUrl);
-
-        Event::assertDispatched(Verified::class);
-        $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $response->assertRedirect(route('access.pending', absolute: false).'?verified=1');
-    }
-
-    public function test_email_is_not_verified_with_invalid_hash(): void
-    {
-        $user = User::factory()->unverified()->create();
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1('wrong-email')]
-        );
-
-        $this->actingAs($user)->get($verificationUrl);
-
-        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+        $this->actingAs($user)->get('/verify-email')->assertNotFound();
+        $this->get('/verify-email/1/invalid')->assertNotFound();
     }
 }

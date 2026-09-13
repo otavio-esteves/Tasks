@@ -28,6 +28,7 @@ class TeamManagerTest extends TestCase
             ->call('create')
             ->set('form.name', 'Nova Equipe')
             ->set('form.description', 'Descricao nova')
+            ->set('form.icon', 'wrench')
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -35,12 +36,14 @@ class TeamManagerTest extends TestCase
         $this->assertDatabaseHas('teams', [
             'name' => 'Nova Equipe',
             'slug' => 'nova-equipe',
+            'icon' => 'wrench',
         ]);
 
         Livewire::actingAs($admin)
             ->test(TeamManager::class)
             ->call('edit', $team->id)
             ->set('form.name', 'Equipe Atualizada')
+            ->set('form.icon', 'leaf')
             ->call('store')
             ->assertHasNoErrors()
             ->assertSet('isModalOpen', false);
@@ -49,6 +52,7 @@ class TeamManagerTest extends TestCase
             'id' => $team->id,
             'name' => 'Equipe Atualizada',
             'slug' => 'equipe-atualizada',
+            'icon' => 'leaf',
         ]);
 
         Livewire::actingAs($admin)

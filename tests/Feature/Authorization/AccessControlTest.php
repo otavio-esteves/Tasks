@@ -4,6 +4,7 @@ namespace Tests\Feature\Authorization;
 
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\TeamManager;
+use App\Livewire\Team\TaskManager;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,9 +18,6 @@ class AccessControlTest extends TestCase
     public function test_guest_is_redirected_to_login_for_protected_routes(): void
     {
         $team = Team::factory()->create();
-
-        $this->get(route('dashboard'))
-            ->assertRedirect(route('login'));
 
         $this->get(route('admin.teams'))
             ->assertRedirect(route('login'));
@@ -42,6 +40,16 @@ class AccessControlTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.categories'))
             ->assertOk();
+    }
+
+    public function test_admin_navigation_does_not_expose_legacy_profile_link(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.teams'))
+            ->assertOk()
+            ->assertDontSee(route('profile'), false);
     }
 
     public function test_team_user_cannot_access_admin_routes(): void
@@ -69,6 +77,17 @@ class AccessControlTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(CategoryManager::class)
+            ->assertForbidden();
+    }
+
+    public function test_team_user_cannot_select_admin_system_settings(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('selectSystemTab', 'categories')
             ->assertForbidden();
     }
 

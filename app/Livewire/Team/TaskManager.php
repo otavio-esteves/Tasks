@@ -13,7 +13,11 @@ use App\Application\Tasks\DeleteTask;
 use App\Application\Tasks\GetTask;
 use App\Application\Tasks\Queries\ListTasks;
 use App\Application\Tasks\UpdateTask;
+use App\Application\Tasks\Validators\EnsureAssigneesBelongToTeam;
+use App\Application\Teams\Queries\ListTeamOptions;
+use App\Application\Users\Queries\ListTeamUsers;
 use App\Domain\Categories\Exceptions\CategorySlugAlreadyExists;
+use App\Domain\Tasks\Exceptions\InvalidTaskAssignees;
 use App\Domain\Tasks\Exceptions\InvalidTaskCategory;
 use App\Domain\Tasks\Exceptions\InvalidTaskStatusTransition;
 use App\Domain\Tasks\Exceptions\TaskNotFound;
@@ -24,6 +28,7 @@ use App\Livewire\Forms\TaskForm;
 use App\Models\Category;
 use App\Models\Task;
 use App\Models\Team;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Validator;
@@ -46,15 +51,27 @@ class TaskManager extends Component
 
     public string $filterCategoryId = '';
 
+    public string $filterAssigneeId = '';
+
     public string $filterStatus = '';
 
     public string $filterUrgent = '';
 
-    public string $quickFilter = '';
+    public string $reportAssigneeId = '';
+
+    public string $reportDueFrom = '';
+
+    public string $reportDueTo = '';
+
+    public string $reportChartStyle = 'lines';
+
+    public string $quickFilter = 'total';
 
     public string $newCategoryName = '';
 
     public bool $showCategoryModal = false;
+
+    public string $systemTab = 'teams';
 
     public ?int $inlineEditingTaskId = null;
 
@@ -75,6 +92,12 @@ class TaskManager extends Component
     }
 
     public function updatingFilterCategoryId(): void
+    {
+        $this->quickFilter = '';
+        $this->resetPage();
+    }
+
+    public function updatingFilterAssigneeId(): void
     {
         $this->quickFilter = '';
         $this->resetPage();
@@ -187,7 +210,7 @@ class TaskManager extends Component
 
             $this->resetForm();
             $this->dispatch('task-modal-closed');
-        } catch (InvalidTaskCategory|TaskNotFound $e) {
+        } catch (InvalidTaskAssignees|InvalidTaskCategory|TaskNotFound $e) {
             $this->flashException($e, 'error');
         } catch (Throwable $e) {
             $this->flashUnexpected($e, 'Não foi possível salvar a checklist agora. Tente novamente.', 'error');
@@ -201,11 +224,46 @@ class TaskManager extends Component
         $this->redirect('/', navigate: true);
     }
 
+    public function selectSystemTab(string $tab): void
+    {
+        if (! in_array($tab, ['teams', 'categories', 'users', 'access'], true)) {
+            return;
+        }
+
+        $resource = match ($tab) {
+            'teams' => Team::class,
+            'categories' => Category::class,
+            default => User::class,
+        };
+        $this->authorize('viewAny', $resource);
+        $this->systemTab = $tab;
+    }
+
     public function selectStatus(string $status): void
     {
         if ($this->form->taskId) {
             $this->updateStatus((int) $this->form->taskId, $status);
         }
+    }
+
+    public function toggleAssignee(int $userId, EnsureAssigneesBelongToTeam $ensureAssigneesBelongToTeam): void
+    {
+        try {
+            $ensureAssigneesBelongToTeam->handle($this->team->id, [$userId]);
+        } catch (InvalidTaskAssignees) {
+            return;
+        }
+
+        $selected = array_values(array_unique(array_map('intval', $this->form->assigneeIds)));
+
+        if (in_array($userId, $selected, true)) {
+            $this->form->assigneeIds = array_values(array_filter($selected, fn (int $id): bool => $id !== $userId));
+
+            return;
+        }
+
+        $selected[] = $userId;
+        $this->form->assigneeIds = $selected;
     }
 
     public function updateStatus(
@@ -319,11 +377,21 @@ class TaskManager extends Component
 
             $this->cancelInlineEdit();
             $this->dispatch('task-inline-updated');
-        } catch (InvalidTaskCategory|TaskNotFound $e) {
+        } catch (InvalidTaskAssignees|InvalidTaskCategory|TaskNotFound $e) {
             $this->flashException($e, 'error');
         } catch (Throwable $e) {
             $this->flashUnexpected($e, 'Nao foi possivel salvar esta informacao agora.', 'error');
         }
+    }
+
+    public function selectInlineCategory(int $categoryId): void
+    {
+        if ($this->inlineEditingField !== 'category_id') {
+            return;
+        }
+
+        $this->inlineEditValue = $categoryId;
+        $this->saveInlineEdit();
     }
 
     public function toggleInlineUrgency(
@@ -382,7 +450,7 @@ class TaskManager extends Component
 
             $this->resetForm();
             $this->dispatch('task-saved');
-        } catch (InvalidTaskCategory|TaskNotFound $e) {
+        } catch (InvalidTaskAssignees|InvalidTaskCategory|TaskNotFound $e) {
             $this->flashException($e, 'error');
         } catch (Throwable $e) {
             $this->flashUnexpected($e, 'Nao foi possivel salvar a tarefa agora. Tente novamente.', 'error');
@@ -432,20 +500,24 @@ class TaskManager extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['filterCategoryId', 'filterStatus', 'filterUrgent', 'quickFilter']);
+        $this->reset(['filterAssigneeId', 'filterCategoryId', 'filterStatus', 'filterUrgent']);
+        $this->quickFilter = 'total';
         $this->resetPage();
     }
 
     public function applyQuickFilter(string $filter): void
     {
-        $this->quickFilter = $this->quickFilter === $filter
-            ? ''
-            : $filter;
+        if ($filter === 'total') {
+            $this->reset(['filterAssigneeId', 'filterCategoryId', 'filterStatus', 'filterUrgent']);
+            $this->quickFilter = 'total';
+        } else {
+            $this->quickFilter = $this->quickFilter === $filter ? 'total' : $filter;
+        }
 
         $this->resetPage();
     }
 
-    public function render(ListTasks $listTasks)
+    public function render(ListTasks $listTasks, ListTeamOptions $listTeamOptions, ListTeamUsers $listTeamUsers)
     {
         $this->authorize('viewAny', [Task::class, $this->team]);
 
@@ -457,11 +529,13 @@ class TaskManager extends Component
             'summary' => $listing->summary,
             'categories' => $this->team->categories,
             'statusOptions' => TaskStatus::cases(),
+            'teams' => $listTeamOptions->handle(),
+            'users' => $listTeamUsers->handle($this->team->id),
         ])->layout('layouts.app');
     }
 
     /**
-     * @return array{category_id?:int,status?:string,urgent?:bool,quick_filter?:string}
+     * @return array{category_id?:int,assignee_id?:int,status?:string,urgent?:bool,quick_filter?:string}
      */
     private function listFilters(): array
     {
@@ -469,6 +543,10 @@ class TaskManager extends Component
 
         if ($this->filterCategoryId !== '') {
             $filters['category_id'] = (int) $this->filterCategoryId;
+        }
+
+        if ($this->filterAssigneeId !== '') {
+            $filters['assignee_id'] = (int) $this->filterAssigneeId;
         }
 
         if ($this->filterStatus !== '') {
@@ -479,7 +557,7 @@ class TaskManager extends Component
             $filters['urgent'] = $this->filterUrgent === '1';
         }
 
-        if ($this->quickFilter !== '') {
+        if (! in_array($this->quickFilter, ['', 'total'], true)) {
             $filters['quick_filter'] = (string) $this->quickFilter;
         }
 
@@ -514,6 +592,7 @@ class TaskManager extends Component
             'is_urgent' => (bool) $task->is_urgent,
             'observation' => $task->observation ?? '',
             'checklist_items' => $this->form->checklistItems,
+            'assignee_ids' => $task->assignees->pluck('id')->all(),
         ]);
 
         $updated = $updateTask->handle($this->team->id, auth()->id(), (int) $this->form->taskId, $data);
@@ -548,6 +627,7 @@ class TaskManager extends Component
         $state = [
             ...$current->toPersistenceArray(),
             'checklist_items' => $current->checklistItemsForMutation(),
+            'assignee_ids' => $current->assigneeIds,
         ];
         $state[$field] = $value;
 

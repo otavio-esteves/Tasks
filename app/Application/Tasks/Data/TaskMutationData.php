@@ -15,6 +15,7 @@ abstract readonly class TaskMutationData
     /**
      * @param  list<ChecklistItemData>  $checklistItems
      * @param  list<HistoryItemData>  $historyItems
+     * @param  list<int>  $assigneeIds
      */
     public function __construct(
         public string $title,
@@ -25,6 +26,7 @@ abstract readonly class TaskMutationData
         public ?string $observation,
         public array $checklistItems = [],
         public array $historyItems = [],
+        public array $assigneeIds = [],
     ) {}
 
     /**
@@ -35,7 +37,8 @@ abstract readonly class TaskMutationData
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null,
-     *     checklist_items?:array<int, array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}>
+     *     checklist_items?:array<int, array{id?:int|string|null,label?:string|null,is_completed?:bool,sort_order?:int}>,
+     *     assignee_ids?:array<int, int|string>
      * }  $data
      */
     public static function fromArray(array $data): static
@@ -48,6 +51,7 @@ abstract readonly class TaskMutationData
             isUrgent: (bool) $data['is_urgent'],
             observation: self::normalizeNullableString($data['observation'] ?? null),
             checklistItems: self::normalizeChecklistItems($data['checklist_items'] ?? []),
+            assigneeIds: self::normalizeAssigneeIds($data['assignee_ids'] ?? []),
         );
     }
 
@@ -73,6 +77,7 @@ abstract readonly class TaskMutationData
                     ->map(fn (TaskHistory $item) => HistoryItemData::fromModel($item))
                     ->all(),
             ),
+            assigneeIds: array_values($task->assignees->pluck('id')->map(fn ($id): int => (int) $id)->all()),
         );
     }
 
@@ -129,7 +134,8 @@ abstract readonly class TaskMutationData
      *     isUrgent:bool,
      *     observation:string,
      *     checklistItems:list<array{id:int|null,label:string,is_completed:bool,sort_order:int}>,
-     *     historyItems:list<array{description:string,created_at:string|null,user_name:string|null,metadata:array|null}>
+     *     historyItems:list<array{description:string,created_at:string|null,user_name:string|null,metadata:array|null}>,
+     *     assigneeIds:list<int>
      * }
      */
     public function toFormState(): array
@@ -146,6 +152,7 @@ abstract readonly class TaskMutationData
                 fn (HistoryItemData $item) => $item->toFormState(),
                 $this->historyItems,
             ),
+            'assigneeIds' => $this->assigneeIds,
         ];
     }
 
@@ -175,5 +182,13 @@ abstract readonly class TaskMutationData
         $trimmed = $value === null ? null : trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /** @param array<int, int|string> $ids
+     * @return list<int>
+     */
+    private static function normalizeAssigneeIds(array $ids): array
+    {
+        return array_values(array_unique(array_map(static fn (int|string $id): int => (int) $id, $ids)));
     }
 }

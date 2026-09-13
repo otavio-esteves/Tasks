@@ -19,11 +19,15 @@ class TeamForm extends Form
     #[Validate('nullable|string')]
     public ?string $description = '';
 
+    #[Validate('required|string|in:buildings,users-three,wrench,leaf,heartbeat,graduation-cap,shield-check,truck,lightbulb,briefcase')]
+    public string $icon = 'buildings';
+
     public function setTeam(Team $team): void
     {
         $this->selected_id = $team->id;
         $this->name = $team->name;
         $this->description = $team->description;
+        $this->icon = $team->icon;
     }
 
     public function save(SaveTeam $saveTeam): void
@@ -35,10 +39,12 @@ class TeamForm extends Form
             ? UpdateTeamData::fromArray([
                 'name' => (string) $this->name,
                 'description' => $this->description,
+                'icon' => $this->icon,
             ])
             : CreateTeamData::fromArray([
                 'name' => (string) $this->name,
                 'description' => $this->description,
+                'icon' => $this->icon,
             ]);
 
         $saveTeam->handle($this->selected_id, $data);

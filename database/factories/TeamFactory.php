@@ -21,6 +21,7 @@ class TeamFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1, 9999),
             'description' => fake()->sentence(),
+            'icon' => 'buildings',
         ];
     }
 }

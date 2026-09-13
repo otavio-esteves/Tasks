@@ -2,10 +2,6 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Application\Dashboard\Data\DashboardCountersData;
-use App\Domain\Tasks\TaskStatus;
-use App\Models\Category;
-use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,23 +27,24 @@ class AuthenticationTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
-    public function test_root_route_redirects_admin_users_to_dashboard(): void
+    public function test_root_route_redirects_admin_without_team_to_first_team_tasks(): void
     {
+        $team = Team::factory()->create();
         $user = User::factory()->admin()->create();
 
         $this->actingAs($user)
             ->get('/')
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('teams.tasks', $team));
     }
 
-    public function test_root_route_redirects_admin_linked_to_team_to_dashboard(): void
+    public function test_root_route_redirects_admin_linked_to_team_to_own_tasks(): void
     {
         $team = Team::factory()->create();
         $user = User::factory()->admin()->forTeam($team)->create();
 
         $this->actingAs($user)
             ->get('/')
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('teams.tasks', $team));
 
         $this->assertSame($team->id, $user->fresh()->team_id);
     }
@@ -62,8 +59,9 @@ class AuthenticationTest extends TestCase
             ->assertRedirect(route('teams.tasks', ['team' => $team->id]));
     }
 
-    public function test_admin_users_are_redirected_to_dashboard_after_login(): void
+    public function test_admin_users_are_redirected_to_tasks_after_login(): void
     {
+        $team = Team::factory()->create();
         $user = User::factory()->admin()->create();
 
         $component = Volt::test('pages.auth.login')
@@ -74,12 +72,12 @@ class AuthenticationTest extends TestCase
 
         $component
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('teams.tasks', $team, absolute: false));
 
         $this->assertAuthenticated();
     }
 
-    public function test_admin_linked_to_team_is_redirected_to_dashboard_after_login(): void
+    public function test_admin_linked_to_team_is_redirected_to_own_tasks_after_login(): void
     {
         $team = Team::factory()->create();
         $user = User::factory()->admin()->forTeam($team)->create();
@@ -91,13 +89,13 @@ class AuthenticationTest extends TestCase
 
         $component
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('teams.tasks', $team, absolute: false));
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame($team->id, $user->fresh()->team_id);
     }
 
-    public function test_team_users_are_redirected_to_their_own_dashboard_after_login(): void
+    public function test_team_users_are_redirected_to_their_own_tasks_after_login(): void
     {
         $team = Team::factory()->create();
         $user = User::factory()->forTeam($team)->create();
@@ -132,73 +130,14 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_dashboard_route_renders_for_admin_users(): void
-    {
-        $user = User::factory()->admin()->create();
-
-        $this->actingAs($user);
-
-        $response = $this->get('/dashboard');
-
-        $response
-            ->assertOk()
-            ->assertSeeVolt('layout.navigation');
-    }
-
-    public function test_dashboard_route_renders_for_admin_linked_to_team(): void
-    {
-        $team = Team::factory()->create();
-        $user = User::factory()->admin()->forTeam($team)->create();
-
-        $this->actingAs($user)
-            ->get('/dashboard')
-            ->assertOk()
-            ->assertSeeVolt('layout.navigation');
-
-        $this->assertSame($team->id, $user->fresh()->team_id);
-    }
-
-    public function test_admin_dashboard_displays_real_active_counters(): void
-    {
-        $admin = User::factory()->admin()->create();
-        $firstTeam = Team::factory()->create();
-        $secondTeam = Team::factory()->create();
-        Team::factory()->create()->delete();
-        $firstCategory = Category::factory()->for($firstTeam)->create();
-        $secondCategory = Category::factory()->for($secondTeam)->create();
-        Category::factory()->for($firstTeam)->create()->delete();
-        Task::factory()->forCategory($firstCategory)->withStatus(TaskStatus::Pending)->count(2)->create();
-        Task::factory()->forCategory($firstCategory)->withStatus(TaskStatus::InProgress)->create();
-        Task::factory()->forCategory($secondCategory)->withStatus(TaskStatus::Completed)->create();
-        Task::factory()->forCategory($secondCategory)->withStatus(TaskStatus::Pending)->create()->delete();
-
-        $response = $this->actingAs($admin)->get(route('dashboard'));
-
-        $response
-            ->assertOk()
-            ->assertViewHas('counters', function (DashboardCountersData $counters): bool {
-                return $counters->activeTeams === 2
-                    && $counters->activeCategories === 2
-                    && $counters->activePendingTasks === 2;
-            })
-            ->assertSeeInOrder([
-                'Total de Equipes',
-                '>2<',
-                'Categorias Ativas',
-                '>2<',
-                'Tarefas pendentes',
-                '>2<',
-            ], false);
-    }
-
-    public function test_dashboard_route_redirects_team_users_to_their_own_task_panel(): void
+    public function test_removed_dashboard_route_is_not_available(): void
     {
         $team = Team::factory()->create();
         $user = User::factory()->forTeam($team)->create();
 
         $this->actingAs($user)
             ->get('/dashboard')
-            ->assertRedirect(route('teams.tasks', ['team' => $team->id]));
+            ->assertNotFound();
     }
 
     public function test_users_can_logout(): void

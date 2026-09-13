@@ -7,4 +7,5 @@ return [
     'is_urgent' => 'prioridade',
     'observation' => 'observação',
     'category_id' => 'categoria',
+    'assignee_ids' => 'responsáveis',
 ];

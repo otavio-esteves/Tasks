@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Application\Users\ChangeUserRole;
 use App\Models\User;
+use DomainException;
 use Illuminate\Console\Command;
 
 class SetAdministratorAccess extends Command
@@ -11,7 +13,7 @@ class SetAdministratorAccess extends Command
 
     protected $description = 'Explicitly grant or revoke administrative access from the server console';
 
-    public function handle(): int
+    public function handle(ChangeUserRole $changeUserRole): int
     {
         $user = User::query()->where('email', mb_strtolower(trim((string) $this->argument('email'))))->first();
 
@@ -23,14 +25,14 @@ class SetAdministratorAccess extends Command
 
         $revoke = (bool) $this->option('revoke');
 
-        if (! $revoke && ! $user->hasVerifiedEmail()) {
-            $this->error('Verify the account email before granting administrative access.');
+        try {
+            $changeUserRole->handle($user->id, ! $revoke);
+        } catch (DomainException $exception) {
+            $this->error($exception->getMessage());
 
             return self::FAILURE;
         }
 
-        // Never expose this assignment through public input or mass assignment.
-        $user->forceFill(['is_admin' => ! $revoke])->save();
         $this->info($revoke ? 'Administrative access revoked.' : 'Administrative access granted.');
 
         return self::SUCCESS;

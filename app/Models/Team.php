@@ -12,7 +12,7 @@ class Team extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'slug', 'description'];
+    protected $fillable = ['name', 'slug', 'description', 'icon'];
 
     public function categories(): HasMany
     {

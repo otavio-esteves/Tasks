@@ -140,6 +140,23 @@ class TaskListingTest extends TestCase
         $this->assertSame('Poste concluido', $listing->tasks->items()[0]->title);
     }
 
+    public function test_task_listing_and_summary_can_be_filtered_by_assignee(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $firstUser = User::factory()->forTeam($team)->create();
+        $secondUser = User::factory()->forTeam($team)->create();
+        $firstTask = Task::factory()->forTeam($team)->create(['category_id' => $category->id]);
+        $secondTask = Task::factory()->forTeam($team)->create(['category_id' => $category->id]);
+        $firstTask->assignees()->attach($firstUser);
+        $secondTask->assignees()->attach($secondUser);
+
+        $listing = app(ListTasks::class)->handle($team->id, '', ['assignee_id' => $firstUser->id], 10);
+
+        $this->assertSame(1, $listing->summary['total']);
+        $this->assertSame([$firstTask->id], $listing->tasks->pluck('id')->all());
+    }
+
     public function test_task_top_summary_cards_work_as_quick_filters(): void
     {
         $team = Team::factory()->create();
@@ -162,6 +179,13 @@ class TaskListingTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(TaskManager::class, ['team' => $team])
+            ->assertSet('quickFilter', 'total')
+            ->assertSee('Tarefa urgente')
+            ->assertSee('Tarefa concluida')
+            ->set('filterStatus', TaskStatus::Pending->value)
+            ->assertSet('quickFilter', '')
+            ->call('clearFilters')
+            ->assertSet('quickFilter', 'total')
             ->call('applyQuickFilter', 'urgent')
             ->assertSet('quickFilter', 'urgent')
             ->assertSee('Tarefa urgente')
