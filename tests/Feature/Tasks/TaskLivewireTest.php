@@ -27,6 +27,65 @@ class TaskLivewireTest extends TestCase
             ->assertSee($team->name);
     }
 
+    public function test_team_sidebar_lists_all_teams_without_granting_cross_team_navigation(): void
+    {
+        $ownTeam = Team::factory()->create(['name' => 'Equipe do usuário']);
+        $otherTeam = Team::factory()->create(['name' => 'Equipe sem acesso']);
+        $user = User::factory()->forTeam($ownTeam)->create();
+
+        $this->actingAs($user)
+            ->get(route('teams.tasks', $ownTeam))
+            ->assertOk()
+            ->assertSee('Equipes')
+            ->assertSee('data-testid="teams-menu-trigger"', false)
+            ->assertSee('x-collapse', false)
+            ->assertSee($ownTeam->name)
+            ->assertSee($otherTeam->name)
+            ->assertSee(route('teams.tasks', $ownTeam), false)
+            ->assertDontSee(route('teams.tasks', $otherTeam), false)
+            ->assertSee('Sem acesso')
+            ->assertDontSee('data-testid="admin-system-menu-trigger"', false);
+    }
+
+    public function test_admin_sidebar_links_all_teams_and_exposes_system_settings(): void
+    {
+        $currentTeam = Team::factory()->create(['name' => 'Equipe atual']);
+        $otherTeam = Team::factory()->create(['name' => 'Outra equipe']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->get(route('teams.tasks', $currentTeam))
+            ->assertOk()
+            ->assertSee('data-testid="admin-system-menu-trigger"', false)
+            ->assertSee('data-testid="admin-system-settings-dialog"', false)
+            ->assertDontSee('x-on:click="systemOpen = !systemOpen"', false)
+            ->assertSee('Configurações administrativas')
+            ->assertSee(route('teams.tasks', $currentTeam), false)
+            ->assertSee(route('teams.tasks', $otherTeam), false)
+            ->assertSee('Gerencie as equipes do sistema.');
+    }
+
+    public function test_admin_can_switch_the_system_settings_section(): void
+    {
+        $team = Team::factory()->create();
+        $admin = User::factory()->admin()->create();
+
+        Livewire::actingAs($admin)
+            ->test(TaskManager::class, ['team' => $team])
+            ->assertSet('systemTab', 'teams')
+            ->assertSee('Nova equipe')
+            ->call('selectSystemTab', 'categories')
+            ->assertSet('systemTab', 'categories')
+            ->assertSee('Nova categoria')
+            ->assertDontSee('Nova equipe')
+            ->call('selectSystemTab', 'users')
+            ->assertSet('systemTab', 'users')
+            ->assertSee('Cargos dos usuários')
+            ->call('selectSystemTab', 'access')
+            ->assertSet('systemTab', 'access')
+            ->assertSee('Exigir identificação');
+    }
+
     public function test_task_manager_renders_list_view_control_and_inline_checklist_panel(): void
     {
         $team = Team::factory()->create();
@@ -37,6 +96,37 @@ class TaskLivewireTest extends TestCase
             ->get(route('teams.tasks', $team))
             ->assertOk()
             ->assertSee('Visualização em lista')
+            ->assertSee('data-testid="indicators-view-trigger"', false)
+            ->assertSee('data-testid="reports-view-trigger"', false)
+            ->assertSee('data-testid="indicator-chart-controls"', false)
+            ->assertSee("panelView = 'indicators'", false)
+            ->assertSee('Panorama operacional')
+            ->assertSee('Linhas')
+            ->assertSee('Colunas')
+            ->assertSee('Pizza')
+            ->assertSee('Pendentes')
+            ->assertSee('Urgentes')
+            ->assertSee('Tarefas dos indicadores')
+            ->assertSee('Central de relatórios')
+            ->assertSee('Relatório geral')
+            ->assertSee('Imprimir PDF')
+            ->assertSee('Estilo do gráfico')
+            ->assertSee('aria-label="Abrir calendário da data inicial"', false)
+            ->assertSee('aria-label="Estilo do gráfico do relatório"', false)
+            ->assertSee('ph-chart-pie-slice', false)
+            ->assertSee('rounded-full px-2.5', false)
+            ->assertSee('Todos os usuários')
+            ->assertSee('Responsáveis')
+            ->assertDontSee('wire:model.live="form.assigneeIds"', false)
+            ->assertDontSee('<select', false)
+            ->assertSee('data-testid="user-settings-dialog"', false)
+            ->assertSee('data-testid="task-title-input"', false)
+            ->assertSee('bg-muted/50', false)
+            ->assertSee('h-[100dvh]', false)
+            ->assertSee('w-[calc(100vw-1rem)]', false)
+            ->assertSee('max-h-[calc(100dvh-1rem)]', false)
+            ->assertSee('grid-cols-2 gap-4 sm:grid-cols-5', false)
+            ->assertSee('p-3 sm:p-6', false)
             ->assertSee('Duplo clique para editar')
             ->assertSee('Clique para avançar o status')
             ->assertSee('Clique para alternar a prioridade')
@@ -84,6 +174,20 @@ class TaskLivewireTest extends TestCase
             'category_id' => $newCategory->id,
             'due_date' => '2026-12-18',
         ]);
+    }
+
+    public function test_inline_category_options_expand_the_row_without_absolute_overlay(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->create(['team_id' => $team->id]);
+        $user = User::factory()->forTeam($team)->create();
+        $task = Task::factory()->create(['team_id' => $team->id, 'category_id' => $category->id]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('startInlineEdit', $task->id, 'category_id')
+            ->assertSee('data-testid="inline-category-options"', false)
+            ->assertSee('min-w-52', false);
     }
 
     public function test_inline_priority_and_status_controls_update_task_without_opening_form(): void
@@ -146,6 +250,7 @@ class TaskLivewireTest extends TestCase
         $team = Team::factory()->create();
         $category = Category::factory()->create(['team_id' => $team->id]);
         $user = User::factory()->create(['team_id' => $team->id]);
+        $assignee = User::factory()->create(['team_id' => $team->id]);
 
         Livewire::actingAs($user)
             ->test(TaskManager::class, ['team' => $team])
@@ -153,6 +258,7 @@ class TaskLivewireTest extends TestCase
             ->set('form.location', 'Rua de Teste')
             ->set('form.categoryId', $category->id)
             ->set('form.isUrgent', true)
+            ->set('form.assigneeIds', [$assignee->id])
             ->call('save')
             ->assertHasNoErrors()
             ->assertDispatched('task-saved');
@@ -163,6 +269,10 @@ class TaskLivewireTest extends TestCase
             'category_id' => $category->id,
             'is_urgent' => true,
             'team_id' => $team->id,
+        ]);
+        $this->assertDatabaseHas('task_user', [
+            'task_id' => Task::query()->where('title', 'Nova Tarefa Teste')->value('id'),
+            'user_id' => $assignee->id,
         ]);
     }
 
@@ -189,6 +299,34 @@ class TaskLivewireTest extends TestCase
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
             'title' => 'Titulo Atualizado',
+        ]);
+    }
+
+    public function test_assignee_changes_render_history_without_view_error(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->create(['team_id' => $team->id]);
+        $user = User::factory()->forTeam($team)->create();
+        $assignee = User::factory()->forTeam($team)->create(['name' => 'Responsável visível']);
+        $task = Task::factory()->create([
+            'team_id' => $team->id,
+            'category_id' => $category->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->call('edit', $task->id)
+            ->call('toggleAssignee', $assignee->id)
+            ->assertSet('form.assigneeIds', [$assignee->id])
+            ->call('save')
+            ->assertHasNoErrors()
+            ->call('edit', $task->id)
+            ->assertSee('Responsável visível')
+            ->assertSee('Responsáveis pela tarefa atualizados.');
+
+        $this->assertDatabaseHas('task_user', [
+            'task_id' => $task->id,
+            'user_id' => $assignee->id,
         ]);
     }
 

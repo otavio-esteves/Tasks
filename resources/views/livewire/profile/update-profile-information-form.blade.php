@@ -1,9 +1,7 @@
 <?php
 
-use App\Application\Auth\ResolveUserHomeRoute;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 
@@ -35,32 +33,11 @@ new class extends Component
 
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
         $user->save();
 
         $this->dispatch('profile-updated', name: $user->name);
     }
 
-    /**
-     * Send an email verification notification to the current user.
-     */
-    public function sendVerification(ResolveUserHomeRoute $resolveUserHomeRoute): void
-    {
-        $user = Auth::user();
-
-        if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: $resolveUserHomeRoute->handle($user)->toUrl());
-
-            return;
-        }
-
-        $user->sendEmailVerificationNotification();
-
-        Session::flash('status', 'verification-link-sent');
-    }
 }; ?>
 
 <section>
@@ -86,23 +63,6 @@ new class extends Component
             <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1.5 block w-full" required autocomplete="username" />
             <x-input-error class="mt-1.5" :messages="$errors->get('email')" />
 
-            @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
-                <div>
-                    <p class="mt-2 text-sm text-foreground">
-                        {{ __('Your email address is unverified.') }}
-
-                        <button wire:click.prevent="sendVerification" class="rounded-md text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                            {{ __('Click here to re-send the verification email.') }}
-                        </button>
-                    </p>
-
-                    @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                            {{ __('A new verification link has been sent to your email address.') }}
-                        </p>
-                    @endif
-                </div>
-            @endif
         </div>
 
         <div class="flex items-center gap-4">

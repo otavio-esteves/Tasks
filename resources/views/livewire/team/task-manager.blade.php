@@ -1,9 +1,13 @@
-<div class="task-reference-font flex h-screen flex-col overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground"
+<div class="task-reference-font flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground"
      wire:ignore.self
      x-data="{ 
         sidebarOpen: false,
-        adminOpen: {{ request()->routeIs('admin.*') ? 'true' : 'false' }},
+        panelView: 'tasks',
+        indicatorChart: 'lines',
+        teamsOpen: true,
+        systemSettingsOpen: false,
         filterOpen: false,
+        reportConfigOpen: false,
         modalOpen: false, 
         settingsOpen: false,
         settingsTab: 'profile',
@@ -27,8 +31,12 @@
             $wire.closeCategoryModal();
             return;
         }
-        if (modalOpen) {
+        if (reportConfigOpen) {
+            reportConfigOpen = false;
+        } else if (modalOpen) {
             $wire.closeModal();
+        } else if (systemSettingsOpen) {
+            systemSettingsOpen = false;
         } else if (settingsOpen) {
             settingsOpen = false;
         } else if (sidebarOpen) {
@@ -51,19 +59,16 @@
         class="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-sm z-40"></div>
 
     <aside id="sidebar"
-        class="fixed left-0 top-0 z-50 flex h-full w-[23.4rem] max-w-[90vw] transform flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 ease-out"
+        class="fixed left-0 top-0 z-50 flex h-[100dvh] w-[calc(100vw-1rem)] max-w-[23.4rem] transform flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 ease-out sm:w-[23.4rem]"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
         
         <div class="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar p-2.5">
-            <div class="flex items-center gap-1">
-                <div class="text-black p-1.5 rounded-md shadow-slate-900/20 dark:text-white">
-                    <x-application-logo class="h-6 w-6" />
-                </div>
+            <div class="flex items-center px-1.5">
                 <span class="font-semibold tracking-tight text-sidebar-accent-foreground">
                     {{ config('app.name') }}
                 </span>
             </div>
-            <button x-on:click="sidebarOpen = false" aria-label="Fechar menu lateral" class="rounded-md p-2 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+            <button x-on:click="sidebarOpen = false" aria-label="Fechar menu lateral" class="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                 <i class="ph ph-x text-lg"></i>
             </button>
         </div>
@@ -72,25 +77,71 @@
             <div>
                 <h3 class="mb-2 px-3 text-[10px] font-medium text-muted-foreground">Geral</h3>
                 <nav class="space-y-0.5">
-                    <a href="{{ route('teams.tasks', $team) }}"
-                        wire:navigate
-                        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('teams.tasks') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
+                    <button type="button" x-on:click="panelView = 'tasks'; sidebarOpen = false"
+                        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                        :class="panelView === 'tasks' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-clipboard-text text-lg"></i>
                         Tarefas
-                    </a>
+                    </button>
 
-                    <a href="{{ route('dashboard') }}"
-                        wire:navigate
-                        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
+                    <button type="button" data-testid="indicators-view-trigger"
+                        x-on:click="panelView = 'indicators'; sidebarOpen = false"
+                        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                        :class="panelView === 'indicators' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-chart-pie-slice text-lg"></i>
-                        Dashboard
-                    </a>
+                        Indicadores
+                    </button>
 
-                    <a href="#"
-                        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                    <button type="button" data-testid="reports-view-trigger" x-on:click="panelView = 'reports'; sidebarOpen = false"
+                        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                        :class="panelView === 'reports' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-scroll text-lg"></i>
-                        Relatórios
-                    </a>
+                        <span class="text-left">Relatórios</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div>
+                <button type="button"
+                    data-testid="teams-menu-trigger"
+                    x-on:click="teamsOpen = !teamsOpen"
+                    aria-controls="sidebar-teams-menu"
+                    x-bind:aria-expanded="teamsOpen"
+                    class="mb-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                    <span class="flex items-center gap-3">
+                        <i class="ph-duotone ph-users-three text-lg" aria-hidden="true"></i>
+                        <span>Equipes</span>
+                    </span>
+                    <i class="ph ph-caret-down text-sm text-muted-foreground transition-transform duration-200" :class="teamsOpen ? 'rotate-180' : ''" aria-hidden="true"></i>
+                </button>
+                <nav id="sidebar-teams-menu"
+                    x-show="teamsOpen"
+                    x-collapse
+                    class="space-y-0.5"
+                    aria-label="Equipes disponíveis">
+                    @foreach ($teams as $sidebarTeam)
+                        @php
+                            $sidebarTeamIcon = in_array($sidebarTeam->icon, ['buildings', 'users-three', 'wrench', 'leaf', 'heartbeat', 'graduation-cap', 'shield-check', 'truck', 'lightbulb', 'briefcase'], true)
+                                ? $sidebarTeam->icon
+                                : 'buildings';
+                        @endphp
+                        @can('view', $sidebarTeam)
+                            <a href="{{ route('teams.tasks', $sidebarTeam) }}"
+                                wire:navigate
+                                class="flex items-center gap-3 rounded-md py-2 pl-10 pr-3 text-sm font-medium transition-colors {{ $sidebarTeam->is($team) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
+                                <i class="ph-duotone ph-{{ $sidebarTeamIcon }} shrink-0 text-base opacity-70" aria-hidden="true"></i>
+                                <span class="truncate">{{ $sidebarTeam->name }}</span>
+                            </a>
+                        @else
+                            <div class="flex items-center gap-3 rounded-md py-2 pl-10 pr-3 text-sm font-medium text-muted-foreground"
+                                title="Você não possui acesso a esta equipe">
+                                <i class="ph-duotone ph-{{ $sidebarTeamIcon }} shrink-0 text-base opacity-60" aria-hidden="true"></i>
+                                <span class="truncate">{{ $sidebarTeam->name }}</span>
+                                <i class="ph ph-lock-key ml-auto text-xs" aria-hidden="true"></i>
+                                <span class="sr-only">Sem acesso</span>
+                            </div>
+                        @endcan
+                    @endforeach
                 </nav>
             </div>
 
@@ -99,39 +150,12 @@
                     <h3 class="mb-2 px-3 text-[10px] font-medium text-muted-foreground">Administração</h3>
                     <nav class="space-y-0.5">
                         <button type="button"
-                            x-on:click="adminOpen = !adminOpen"
-                            class="group flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-                            <div class="flex items-center gap-3">
-                                <i class="ph-duotone ph-bank text-lg"></i>
-                                <span>Equipes</span>
-                            </div>
-                            <i class="ph ph-caret-down text-muted-foreground transition-transform duration-200" :class="adminOpen ? 'rotate-180' : ''"></i>
+                            data-testid="admin-system-menu-trigger"
+                            x-on:click="systemSettingsOpen = true; settingsOpen = false; sidebarOpen = false"
+                            class="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                            <i class="ph-duotone ph-gear-six text-lg"></i>
+                            <span>Sistema</span>
                         </button>
-
-                        <div x-show="adminOpen"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 -translate-y-1"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            x-transition:leave="transition ease-in duration-150"
-                            x-transition:leave-start="opacity-100 translate-y-0"
-                            x-transition:leave-end="opacity-0 -translate-y-1"
-                            x-cloak
-                            class="space-y-0.5 pt-1">
-                            
-                            <a href="{{ route('admin.teams') }}"
-                                wire:navigate
-                                class="flex items-center gap-3 rounded-md py-2 pl-10 pr-3 text-sm font-medium transition-colors {{ request()->routeIs('admin.teams') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
-                                <i class="ph-duotone ph-buildings text-lg opacity-70"></i>
-                                Listagem
-                            </a>
-
-                            <a href="{{ route('admin.categories') }}"
-                                wire:navigate
-                                class="flex items-center gap-3 rounded-md py-2 pl-10 pr-3 text-sm font-medium transition-colors {{ request()->routeIs('admin.categories') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
-                                <i class="ph-duotone ph-tag text-lg opacity-70"></i>
-                                Categorias
-                            </a>
-                        </div>
                     </nav>
                 </div>
             @endif
@@ -154,7 +178,117 @@
         </div>
     </aside>
 
+    @if (auth()->user()->isAdmin())
+        <div id="modalSystemSettings"
+            data-testid="admin-system-settings-dialog"
+            x-show="systemSettingsOpen"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            x-cloak
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-2 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="system-settings-title">
+
+            <div class="flex h-[calc(100dvh-1rem)] max-h-[760px] w-full max-w-7xl transform overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg transition-[opacity,transform] sm:h-[calc(100dvh-2rem)]"
+                x-show="systemSettingsOpen"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-on:click.away="systemSettingsOpen = false">
+
+                <aside class="hidden w-56 shrink-0 flex-col gap-4 border-r border-border bg-muted/40 p-4 md:flex">
+                    <div class="px-2 py-1">
+                        <h2 class="text-base font-semibold tracking-tight">Sistema</h2>
+                        <p class="mt-1 text-xs text-muted-foreground">Configurações administrativas</p>
+                    </div>
+
+                    <nav class="space-y-1" aria-label="Configurações do sistema">
+                        <button type="button" wire:click="selectSystemTab('teams')"
+                            class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors {{ $systemTab === 'teams' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' }}">
+                            <i class="ph-duotone ph-buildings text-lg" aria-hidden="true"></i>
+                            Equipes
+                        </button>
+                        <button type="button" wire:click="selectSystemTab('categories')"
+                            class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors {{ $systemTab === 'categories' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' }}">
+                            <i class="ph-duotone ph-tag text-lg" aria-hidden="true"></i>
+                            Categorias
+                        </button>
+                        <button type="button" wire:click="selectSystemTab('users')"
+                            class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors {{ $systemTab === 'users' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' }}">
+                            <i class="ph-duotone ph-user-gear text-lg" aria-hidden="true"></i>
+                            Usuários
+                        </button>
+                        <button type="button" wire:click="selectSystemTab('access')"
+                            class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors {{ $systemTab === 'access' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' }}">
+                            <i class="ph-duotone ph-lock-key-open text-lg" aria-hidden="true"></i>
+                            Acesso
+                        </button>
+                    </nav>
+                </aside>
+
+                <main class="flex min-w-0 flex-1 flex-col bg-background">
+                    <div class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                        <div class="min-w-0">
+                            <h2 id="system-settings-title" class="text-base font-semibold tracking-tight">Sistema</h2>
+                            <p class="truncate text-xs text-muted-foreground">
+                                {{ match($systemTab) {
+                                    'teams' => 'Gerencie as equipes do sistema.',
+                                    'categories' => 'Gerencie as categorias disponíveis por equipe.',
+                                    'users' => 'Gerencie os cargos e privilégios dos usuários.',
+                                    'access' => 'Defina se o sistema exige identificação para acesso.',
+                                } }}
+                            </p>
+                        </div>
+                        <button type="button" x-on:click="systemSettingsOpen = false" aria-label="Fechar configurações do sistema"
+                            class="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <i class="ph ph-x text-lg leading-none" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <div class="border-b border-border p-3 md:hidden">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" wire:click="selectSystemTab('teams')"
+                                class="h-9 rounded-md px-3 text-sm font-medium {{ $systemTab === 'teams' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground' }}">
+                                Equipes
+                            </button>
+                            <button type="button" wire:click="selectSystemTab('categories')"
+                                class="h-9 rounded-md px-3 text-sm font-medium {{ $systemTab === 'categories' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground' }}">
+                                Categorias
+                            </button>
+                            <button type="button" wire:click="selectSystemTab('users')"
+                                class="h-9 rounded-md px-3 text-sm font-medium {{ $systemTab === 'users' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground' }}">
+                                Usuários
+                            </button>
+                            <button type="button" wire:click="selectSystemTab('access')"
+                                class="h-9 rounded-md px-3 text-sm font-medium {{ $systemTab === 'access' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground' }}">
+                                Acesso
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+                        @if ($systemTab === 'teams')
+                            <livewire:admin.team-manager :key="'system-team-manager'" />
+                        @elseif ($systemTab === 'categories')
+                            <livewire:admin.category-manager :key="'system-category-manager'" />
+                        @elseif ($systemTab === 'users')
+                            <livewire:admin.user-manager :key="'system-user-manager'" />
+                        @else
+                            <livewire:admin.system-access-manager :key="'system-access-manager'" />
+                        @endif
+                    </div>
+                </main>
+            </div>
+        </div>
+    @endif
+
     <div id="modalSettings" 
+         data-testid="user-settings-dialog"
          x-show="settingsOpen"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -163,9 +297,9 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          x-cloak
-         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-2 sm:p-4">
         
-        <div class="flex h-[600px] max-h-[90vh] w-full max-w-4xl transform overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg transition-[opacity,transform]"
+        <div class="flex h-[calc(100dvh-1rem)] max-h-[760px] w-full max-w-7xl transform overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg transition-[opacity,transform] sm:h-[calc(100dvh-2rem)]"
              x-show="settingsOpen"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 scale-95"
@@ -173,8 +307,9 @@
              x-on:click.away="settingsOpen = false">
             
             <aside class="hidden w-56 shrink-0 flex-col gap-4 border-r border-border bg-muted/40 p-4 md:flex">
-                <div class="flex items-center justify-between px-2 py-1">
+                <div class="px-2 py-1">
                     <h2 class="text-base font-semibold tracking-tight">Configurações</h2>
+                    <p class="mt-1 text-xs text-muted-foreground">Preferências da sua conta</p>
                 </div>
 
                 <nav class="space-y-1">
@@ -213,16 +348,28 @@
             </aside>
 
             <main class="flex min-w-0 flex-1 flex-col bg-background">
-                <div class="flex shrink-0 items-center justify-between border-b border-border px-6 py-4 md:justify-end">
-                    <h2 class="text-base font-semibold tracking-tight md:hidden">Configurações</h2>
+                <div class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                    <div class="min-w-0">
+                        <h2 class="text-base font-semibold tracking-tight">Configurações</h2>
+                        <p class="truncate text-xs text-muted-foreground">Gerencie seu perfil, segurança e aparência.</p>
+                    </div>
                     <button type="button" x-on:click="settingsOpen = false" aria-label="Fechar configurações"
                         class="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
                         <i class="ph ph-x text-2xl"></i>
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
-                    <div class="mx-auto max-w-2xl">
+                <div class="overflow-x-auto border-b border-border p-2 md:hidden">
+                    <div class="grid min-w-[25rem] grid-cols-4 gap-1">
+                        <button type="button" x-on:click="settingsTab = 'profile'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'profile' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Perfil</button>
+                        <button type="button" x-on:click="settingsTab = 'security'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'security' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Segurança</button>
+                        <button type="button" x-on:click="settingsTab = 'theme'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'theme' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Tema</button>
+                        <button type="button" x-on:click="settingsTab = 'about'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'about' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Sobre</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
+                    <div class="mx-auto max-w-3xl">
                         
                         <div x-show="settingsTab === 'profile'" class="flex flex-col-reverse gap-6 md:flex-row md:gap-8">
                             <div class="flex-1">
@@ -249,15 +396,15 @@
                             </div>
                             <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                                 <button x-on:click="localStorage.theme = 'light'; document.documentElement.classList.remove('dark')"
-                                    class="group relative flex flex-col gap-3 rounded-shadcn border bg-card p-3 text-left text-card-foreground shadow-sm transition-colors hover:bg-accent/40"
+                                    class="group relative flex flex-col gap-3 rounded-shadcn border bg-white p-3 text-left text-zinc-950 shadow-sm transition-colors hover:bg-zinc-50"
                                     :class="localStorage.theme === 'light' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
-                                    <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-border bg-muted">
-                                        <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-background shadow-sm"></div>
-                                        <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-background shadow-sm"></div>
+                                    <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
+                                        <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-white shadow-sm"></div>
+                                        <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-white shadow-sm"></div>
                                     </div>
                                     <div>
                                         <span class="mb-0.5 block text-sm font-medium">Modo claro</span>
-                                        <span class="block text-xs text-muted-foreground">Visual limpo para ambientes iluminados.</span>
+                                        <span class="block text-xs text-zinc-500">Branco neutro para ambientes iluminados.</span>
                                     </div>
                                 </button>
 
@@ -293,9 +440,6 @@
 
                         <div x-show="settingsTab === 'about'" class="space-y-6">
                             <div class="flex flex-col items-center gap-5 rounded-shadcn border border-border bg-card p-6 text-card-foreground shadow-sm sm:flex-row sm:items-start">
-                                <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-shadcn border border-border bg-muted text-foreground">
-                                    <x-application-logo class="h-8 w-8" />
-                                </div>
                                 <div class="flex-1">
                                     <h4 class="text-lg font-semibold tracking-tight text-foreground">{{ config('app.name') }}</h4>
                                     <span class="inline-flex rounded-sm border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">Alpha 1.0</span>
@@ -311,19 +455,232 @@
         </div>
     </div>
 
-    <header class="z-20 flex shrink-0 flex-col items-center justify-between gap-3 border-b border-border bg-background px-6 py-4 md:flex-row">
-        <div class="flex items-center gap-2 w-full md:w-auto">
+    <header x-show="panelView === 'indicators'" x-cloak
+        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-3 border-b border-border bg-background px-3 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:py-4">
+        <div class="flex min-w-0 w-full items-center gap-2 md:w-auto">
+            <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+                <i class="ph ph-list text-lg" aria-hidden="true"></i>
+            </button>
+            <span class="min-w-0 truncate font-semibold tracking-tight text-foreground">
+                Indicadores <span class="font-normal text-muted-foreground">/ {{ $team->name }}</span>
+            </span>
+        </div>
+        <div class="hidden md:block" aria-hidden="true"></div>
+        <span class="hidden md:block" aria-hidden="true"></span>
+    </header>
+
+    @php
+        $pendingTasks = max(0, $summary['total'] - $summary['in_progress'] - $summary['completed']);
+        $teamIndicators = [
+            ['label' => 'Total', 'value' => $summary['total'], 'icon' => 'files', 'bar' => 'bg-slate-500', 'text' => 'text-slate-500'],
+            ['label' => 'Pendentes', 'value' => $pendingTasks, 'icon' => 'hourglass', 'bar' => 'bg-amber-500', 'text' => 'text-amber-500'],
+            ['label' => 'Urgentes', 'value' => $summary['urgent'], 'icon' => 'warning-circle', 'bar' => 'bg-red-500', 'text' => 'text-red-500'],
+            ['label' => 'Vencidas', 'value' => $summary['overdue'], 'icon' => 'calendar-x', 'bar' => 'bg-amber-500', 'text' => 'text-amber-500'],
+            ['label' => 'Em andamento', 'value' => $summary['in_progress'], 'icon' => 'spinner-gap', 'bar' => 'bg-blue-500', 'text' => 'text-blue-500'],
+            ['label' => 'Concluídas', 'value' => $summary['completed'], 'icon' => 'check-circle', 'bar' => 'bg-emerald-500', 'text' => 'text-emerald-500'],
+        ];
+        $teamIndicatorMaximum = max(1, ...array_column($teamIndicators, 'value'));
+        $statusIndicators = [
+            ['label' => 'Pendentes', 'value' => $pendingTasks, 'color' => 'bg-amber-500'],
+            ['label' => 'Em andamento', 'value' => $summary['in_progress'], 'color' => 'bg-blue-500'],
+            ['label' => 'Concluídas', 'value' => $summary['completed'], 'color' => 'bg-emerald-500'],
+        ];
+        $statusTotal = max(1, array_sum(array_column($statusIndicators, 'value')));
+        $pendingEnd = ($statusIndicators[0]['value'] / $statusTotal) * 100;
+        $inProgressEnd = $pendingEnd + (($statusIndicators[1]['value'] / $statusTotal) * 100);
+        $statusPie = $summary['total'] > 0
+            ? "conic-gradient(rgb(245 158 11) 0 {$pendingEnd}%, rgb(59 130 246) {$pendingEnd}% {$inProgressEnd}%, rgb(16 185 129) {$inProgressEnd}% 100%)"
+            : 'hsl(var(--muted))';
+        $urgentPercentage = ($summary['urgent'] / max(1, $summary['total'])) * 100;
+        $urgentPie = $summary['total'] > 0
+            ? "conic-gradient(rgb(239 68 68) 0 {$urgentPercentage}%, hsl(var(--muted)) {$urgentPercentage}% 100%)"
+            : 'hsl(var(--muted))';
+    @endphp
+
+    <main x-show="panelView === 'indicators'" x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="flex-1 overflow-y-auto bg-muted/40 p-3 sm:p-6 custom-scrollbar">
+        <div class="mx-auto max-w-6xl">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Visão da equipe</p>
+                    <h2 class="mt-1 text-2xl font-semibold tracking-tight">Panorama operacional</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">Distribuição atual das tarefas de {{ $team->name }}.</p>
+                </div>
+                <div class="w-full sm:w-64">
+                    <label for="indicator-user-filter" class="mb-1 block text-[11px] font-medium text-muted-foreground">Responsável</label>
+                    <x-system-select id="indicator-user-filter" model="filterAssigneeId" :value="$filterAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos os usuários" icon="user" />
+                </div>
+            </div>
+
+            <section class="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Resumo das tarefas">
+                @foreach ($teamIndicators as $indicator)
+                    <article class="min-w-0 rounded-shadcn border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4">
+                        <div class="flex items-center justify-between text-muted-foreground"><span class="text-xs font-medium">{{ $indicator['label'] }}</span><i class="ph-duotone ph-{{ $indicator['icon'] }} text-base {{ $indicator['text'] }}" aria-hidden="true"></i></div>
+                        <p class="mt-3 text-2xl font-semibold tracking-tight">{{ $indicator['value'] }}</p>
+                    </article>
+                @endforeach
+            </section>
+
+            <section class="mt-4 rounded-shadcn border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-5" aria-labelledby="team-chart-title">
+                <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div><h3 id="team-chart-title" class="text-base font-semibold tracking-tight">Distribuição de tarefas</h3><p class="mt-1 text-xs text-muted-foreground">Comparação proporcional dos indicadores da equipe.</p></div>
+                    <div data-testid="indicator-chart-controls" class="flex h-8 max-w-full items-center overflow-x-auto rounded-md border border-input bg-background p-0.5" role="group" aria-label="Tipo de gráfico">
+                        <button type="button" x-on:click="indicatorChart = 'lines'" class="flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium transition-colors" :class="indicatorChart === 'lines' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'" :aria-pressed="indicatorChart === 'lines'">
+                            <i class="ph ph-chart-bar-horizontal text-sm" aria-hidden="true"></i><span>Linhas</span>
+                        </button>
+                        <button type="button" x-on:click="indicatorChart = 'columns'" class="flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium transition-colors" :class="indicatorChart === 'columns' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'" :aria-pressed="indicatorChart === 'columns'">
+                            <i class="ph ph-chart-bar text-sm" aria-hidden="true"></i><span>Colunas</span>
+                        </button>
+                        <button type="button" x-on:click="indicatorChart = 'pie'" class="flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium transition-colors" :class="indicatorChart === 'pie' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'" :aria-pressed="indicatorChart === 'pie'">
+                            <i class="ph ph-chart-pie-slice text-sm" aria-hidden="true"></i><span>Pizza</span>
+                        </button>
+                    </div>
+                </div>
+                <div x-show="indicatorChart === 'lines'" class="space-y-4" role="img" aria-label="Gráfico de linhas dos indicadores da equipe">
+                    @foreach (array_slice($teamIndicators, 1) as $indicator)
+                        @php
+                            $indicatorPercentage = ($indicator['value'] / $teamIndicatorMaximum) * 100;
+                        @endphp
+                        <div class="grid grid-cols-[5.5rem_minmax(0,1fr)_2rem] items-center gap-2 sm:grid-cols-[9rem_minmax(0,1fr)_2.5rem] sm:gap-3">
+                            <span class="truncate text-xs font-medium text-muted-foreground">{{ $indicator['label'] }}</span>
+                            <div class="h-2 overflow-hidden rounded-sm bg-muted"><div class="h-full rounded-sm {{ $indicator['bar'] }} transition-[width] duration-500" style="width: {{ $indicatorPercentage }}%"></div></div>
+                            <span class="text-right text-xs font-semibold tabular-nums">{{ $indicator['value'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                <div x-show="indicatorChart === 'columns'" x-cloak class="grid grid-cols-2 gap-4 sm:grid-cols-5 sm:gap-3" role="img" aria-label="Gráfico de colunas dos indicadores da equipe">
+                    @foreach (array_slice($teamIndicators, 1) as $indicator)
+                        @php
+                            $indicatorPercentage = ($indicator['value'] / $teamIndicatorMaximum) * 100;
+                        @endphp
+                        <div class="flex min-w-0 flex-col items-center">
+                            <span class="mb-2 text-xs font-semibold tabular-nums">{{ $indicator['value'] }}</span>
+                            <div class="flex h-44 w-full max-w-16 items-end rounded-md bg-muted p-1">
+                                <div class="w-full rounded-sm {{ $indicator['bar'] }} transition-[height] duration-500" style="height: {{ $indicatorPercentage }}%"></div>
+                            </div>
+                            <span class="mt-2 max-w-full truncate text-center text-xs font-medium text-muted-foreground">{{ $indicator['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                <div x-show="indicatorChart === 'pie'" x-cloak class="flex flex-col items-center justify-center gap-6 py-2 sm:flex-row" role="img" aria-label="Gráfico de pizza das tarefas por status">
+                    <div class="relative h-40 w-40 shrink-0 rounded-full sm:h-48 sm:w-48" style="background: {{ $urgentPie }}">
+                        <div class="absolute inset-3 rounded-full border-4 border-card" style="background: {{ $statusPie }}"></div>
+                        <div class="absolute inset-10 flex items-center justify-center rounded-full bg-card text-center shadow-sm sm:inset-12">
+                            <div><span class="block text-2xl font-semibold tabular-nums">{{ $summary['total'] }}</span><span class="text-xs text-muted-foreground">tarefas</span></div>
+                        </div>
+                    </div>
+                    <div class="w-full max-w-xs space-y-3">
+                        @foreach ($statusIndicators as $indicator)
+                            <div class="flex items-center justify-between gap-6 text-xs">
+                                <span class="flex items-center gap-2 text-muted-foreground"><span class="h-2.5 w-2.5 rounded-sm {{ $indicator['color'] }}"></span>{{ $indicator['label'] }}</span>
+                                <span class="font-semibold tabular-nums">{{ $indicator['value'] }}</span>
+                            </div>
+                        @endforeach
+                        <div class="flex items-center justify-between gap-6 border-t border-border pt-3 text-xs">
+                            <span class="flex items-center gap-2 text-muted-foreground"><span class="h-2.5 w-2.5 rounded-sm bg-red-500"></span>Urgentes <span class="text-[10px]">(anel externo)</span></span>
+                            <span class="font-semibold tabular-nums">{{ $summary['urgent'] }}</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mt-4 overflow-hidden rounded-shadcn border border-border bg-card shadow-sm" aria-labelledby="indicator-task-list-title">
+                <div class="border-b border-border px-4 py-3">
+                    <h3 id="indicator-task-list-title" class="text-sm font-semibold">Tarefas dos indicadores</h3>
+                    <p class="mt-1 text-xs text-muted-foreground">{{ $tasks->total() }} registros encontrados com os filtros atuais.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[42rem] text-left text-sm">
+                        <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
+                            <tr><th class="h-10 px-4 font-medium">Código</th><th class="h-10 px-4 font-medium">Tarefa</th><th class="h-10 px-4 font-medium">Responsáveis</th><th class="h-10 px-4 font-medium">Status</th><th class="h-10 px-4 font-medium">Prazo</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            @forelse ($tasks as $task)
+                                <tr class="hover:bg-muted/30"><td class="px-4 py-3 text-xs font-medium">{{ $task->code }}</td><td class="px-4 py-3"><span class="block font-medium">{{ $task->title }}</span><span class="block text-xs text-muted-foreground">{{ $task->category?->name }}</span></td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</td><td class="px-4 py-3 text-xs">{{ $task->status->label() }}</td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</td></tr>
+                            @empty
+                                <tr><td colspan="5" class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma tarefa encontrada.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                @if ($tasks->hasPages())<div class="border-t border-border px-4 py-3">{{ $tasks->links() }}</div>@endif
+            </section>
+        </div>
+    </main>
+
+    <header x-show="panelView === 'reports'" x-cloak
+        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-3 border-b border-border bg-background px-3 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:py-4">
+        <div class="flex min-w-0 w-full items-center gap-2 md:w-auto">
+            <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"><i class="ph ph-list text-lg" aria-hidden="true"></i></button>
+            <span class="min-w-0 truncate font-semibold tracking-tight text-foreground">Relatórios <span class="font-normal text-muted-foreground">/ {{ $team->name }}</span></span>
+        </div>
+        <span class="hidden md:block" aria-hidden="true"></span>
+        <span class="hidden md:block" aria-hidden="true"></span>
+    </header>
+
+    <main x-show="panelView === 'reports'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="flex-1 overflow-y-auto bg-muted/40 p-3 sm:p-6 custom-scrollbar">
+        <div class="mx-auto max-w-6xl">
+            <div class="mb-5"><p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Central de relatórios</p><h2 class="mt-1 text-2xl font-semibold tracking-tight">Escolha uma apresentação</h2><p class="mt-1 text-sm text-muted-foreground">Configure os dados antes de abrir a versão pronta para impressão ou PDF.</p></div>
+
+            <button type="button" x-on:click="reportConfigOpen = true" class="group flex w-full max-w-md items-start gap-3 rounded-shadcn border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4 sm:p-5">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><i class="ph-duotone ph-file-pdf text-xl" aria-hidden="true"></i></span>
+                <span class="min-w-0 flex-1"><span class="block text-base font-semibold">Relatório geral</span><span class="mt-1 block text-xs leading-relaxed text-muted-foreground">Indicadores consolidados e relação completa das tarefas da equipe.</span></span>
+                <i class="ph ph-caret-right mt-1 text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true"></i>
+            </button>
+        </div>
+    </main>
+
+    <div x-show="reportConfigOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="report-config-title">
+        <div x-show="reportConfigOpen" x-transition x-on:click.outside="reportConfigOpen = false" class="max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto rounded-shadcn border border-border bg-background shadow-lg custom-scrollbar">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5 sm:py-4"><div class="min-w-0"><h3 id="report-config-title" class="text-base font-semibold">Relatório geral</h3><p class="mt-1 truncate text-xs text-muted-foreground">Defina os parâmetros da apresentação.</p></div><button type="button" x-on:click="reportConfigOpen = false" aria-label="Fechar configuração do relatório" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"><i class="ph ph-x text-lg" aria-hidden="true"></i></button></div>
+            <div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+                <div class="sm:col-span-2"><label class="mb-1.5 block text-xs font-medium">Responsável</label><x-system-select model="reportAssigneeId" :value="$reportAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos os usuários" icon="user" /></div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-medium">Data inicial</label>
+                    <div class="relative" x-data>
+                        <i class="ph-bold ph-calendar-blank pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-foreground" aria-hidden="true"></i>
+                        <input x-ref="reportDueFrom" wire:model.live="reportDueFrom" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                        <button type="button" x-on:click="$refs.reportDueFrom.showPicker ? $refs.reportDueFrom.showPicker() : $refs.reportDueFrom.focus()" aria-label="Abrir calendário da data inicial" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-medium">Data final</label>
+                    <div class="relative" x-data>
+                        <i class="ph-bold ph-calendar-blank pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-foreground" aria-hidden="true"></i>
+                        <input x-ref="reportDueTo" wire:model.live="reportDueTo" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                        <button type="button" x-on:click="$refs.reportDueTo.showPicker ? $refs.reportDueTo.showPicker() : $refs.reportDueTo.focus()" aria-label="Abrir calendário da data final" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="mb-1.5 block text-xs font-medium">Estilo do gráfico</label>
+                    <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Estilo do gráfico do relatório">
+                        @foreach ([['lines', 'chart-bar-horizontal', 'Linhas'], ['columns', 'chart-bar', 'Colunas'], ['pie', 'chart-pie-slice', 'Pizza']] as [$chartValue, $chartIcon, $chartLabel])
+                            <button type="button" wire:click="$set('reportChartStyle', '{{ $chartValue }}')" role="radio" aria-checked="{{ $reportChartStyle === $chartValue ? 'true' : 'false' }}" class="flex h-12 flex-col items-center justify-center gap-0.5 rounded-md border px-1 text-xs font-medium transition-colors sm:h-10 sm:flex-row sm:gap-2 sm:px-3 {{ $reportChartStyle === $chartValue ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground' }}"><i class="ph-duotone ph-{{ $chartIcon }} text-base" aria-hidden="true"></i>{{ $chartLabel }}</button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col items-stretch gap-3 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"><span class="text-xs text-muted-foreground">As cores serão preservadas na impressão.</span><a target="_blank" rel="noopener" href="{{ route('teams.reports.general', ['team' => $team, 'assignee_id' => $reportAssigneeId ?: null, 'due_from' => $reportDueFrom ?: null, 'due_to' => $reportDueTo ?: null, 'chart_style' => $reportChartStyle]) }}" class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"><i class="ph ph-printer" aria-hidden="true"></i>Imprimir PDF</a></div>
+        </div>
+    </div>
+
+    <header x-show="panelView === 'tasks'"
+        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-2 border-b border-border bg-background px-3 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-3 md:py-4">
+        <div class="flex min-w-0 items-center gap-2 w-full md:w-auto">
             <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="group flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <i class="ph ph-list text-lg"></i>
             </button>
-            <div class="flex items-center gap-3">
-                <span class="font-semibold tracking-tight text-foreground">
+            <div class="min-w-0 flex items-center gap-3">
+                <span class="block truncate font-semibold tracking-tight text-foreground">
                     {{ $team->name }} <span class="font-normal text-muted-foreground">/ {{ auth()->user()->name }}</span>
                 </span>
             </div>
         </div>
 
-        <div class="flex h-8 max-w-full items-center overflow-x-auto rounded-md border border-border bg-muted p-0.5">
+        <div class="flex h-8 w-full max-w-full items-center justify-self-center overflow-x-auto rounded-md border border-border bg-muted p-0.5 md:w-auto">
             <button type="button" wire:click="applyQuickFilter('total')"
                 class="flex h-full items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 transition-colors {{ $quickFilter === 'total' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/60 hover:text-foreground' }}">
                 <i class="ph ph-files text-sm"></i>
@@ -351,7 +708,7 @@
             </button>
         </div>
 
-        <div class="flex items-center gap-2 w-full md:w-auto">
+        <div class="flex w-full min-w-0 items-center gap-2 md:w-auto md:justify-self-end">
             <div class="flex h-8 items-center rounded-md border border-input bg-background p-0.5" role="group" aria-label="Modo de visualização">
                 <button type="button"
                     x-on:click="viewMode = 'grid'; localStorage.setItem('taskViewMode', 'grid')"
@@ -371,7 +728,7 @@
             <div class="relative">
                 <button type="button" x-on:click="filterOpen = !filterOpen" aria-label="Abrir filtros"
                     class="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    :class="({{ $filterCategoryId !== '' ? 'true' : 'false' }} || {{ $filterStatus !== '' ? 'true' : 'false' }} || {{ $filterUrgent !== '' ? 'true' : 'false' }} || {{ $quickFilter !== '' ? 'true' : 'false' }}) ? 'bg-accent text-accent-foreground' : ''">
+                    :class="({{ $filterAssigneeId !== '' ? 'true' : 'false' }} || {{ $filterCategoryId !== '' ? 'true' : 'false' }} || {{ $filterStatus !== '' ? 'true' : 'false' }} || {{ $filterUrgent !== '' ? 'true' : 'false' }} || {{ !in_array($quickFilter, ['', 'total'], true) ? 'true' : 'false' }}) ? 'bg-accent text-accent-foreground' : ''">
                     <i class="ph ph-funnel text-base"></i>
                 </button>
 
@@ -384,7 +741,7 @@
                     x-transition:leave-end="opacity-0 scale-95"
                     x-on:click.away="filterOpen = false"
                     x-cloak
-                    class="absolute right-0 top-10 z-30 w-72 rounded-shadcn border border-border bg-popover p-4 text-popover-foreground shadow-md">
+                    class="fixed inset-x-3 top-auto z-30 mt-2 rounded-shadcn border border-border bg-popover p-4 text-popover-foreground shadow-md sm:absolute sm:inset-x-auto sm:right-0 sm:top-10 sm:mt-0 sm:w-72">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <p class="text-sm font-semibold">Filtros</p>
@@ -398,48 +755,35 @@
 
                     <div class="space-y-3">
                         <div>
+                            <label class="mb-1 block text-[11px] font-medium text-foreground">Responsável</label>
+                            <x-system-select model="filterAssigneeId" :value="$filterAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos" icon="user" />
+                        </div>
+                        <div>
                             <label class="mb-1 block text-[11px] font-medium text-foreground">Categoria</label>
-                            <select wire:model.live="filterCategoryId"
-                                class="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring">
-                                <option value="">Todas</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                            <x-system-select model="filterCategoryId" :value="$filterCategoryId" :options="$categories->pluck('name', 'id')->all()" placeholder="Todas" icon="tag" />
                         </div>
 
                         <div>
                             <label class="mb-1 block text-[11px] font-medium text-foreground">Status</label>
-                            <select wire:model.live="filterStatus"
-                                class="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring">
-                                <option value="">Todos</option>
-                                @foreach($statusOptions as $statusOption)
-                                    <option value="{{ $statusOption->value }}">{{ $statusOption->label() }}</option>
-                                @endforeach
-                            </select>
+                            <x-system-select model="filterStatus" :value="$filterStatus" :options="collect($statusOptions)->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()" placeholder="Todos" icon="clock" />
                         </div>
 
                         <div>
                             <label class="mb-1 block text-[11px] font-medium text-foreground">Urgência</label>
-                            <select wire:model.live="filterUrgent"
-                                class="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring">
-                                <option value="">Todas</option>
-                                <option value="1">Somente urgentes</option>
-                                <option value="0">Somente não urgentes</option>
-                            </select>
+                            <x-system-select model="filterUrgent" :value="$filterUrgent" :options="['1' => 'Somente urgentes', '0' => 'Somente não urgentes']" placeholder="Todas" icon="warning-circle" />
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="relative flex-1 md:w-56 h-8">
+            <div class="relative h-8 min-w-0 flex-1 md:w-56">
                 <i class="ph ph-magnifying-glass pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i>
                 <input wire:model.live.debounce.300ms="search" type="text" placeholder="Buscar..." 
-                    class="h-full w-full rounded-md border border-input bg-background pl-8 pr-3 text-xs shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring">
+                    class="h-full w-full rounded-md border border-input bg-muted/50 pl-8 pr-3 text-xs shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
             </div>
             <button x-on:click="$wire.resetForm(); modalOpen = true; mode = 'create'; modalView = 'details'" 
                 class="flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <i class="ph ph-plus text-sm"></i>
-                <span>Nova tarefa</span>
+                <span class="hidden sm:inline">Nova tarefa</span>
             </button>
         </div>
     </header>
@@ -455,7 +799,7 @@
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 translate-y-2"
          x-cloak
-         class="fixed bottom-6 right-6 z-[60] flex items-center gap-3 rounded-shadcn border border-border bg-background px-4 py-3 text-foreground shadow-lg">
+         class="fixed bottom-3 left-3 right-3 z-[60] flex items-center gap-3 rounded-shadcn border border-border bg-background px-4 py-3 text-foreground shadow-lg sm:bottom-6 sm:left-auto sm:right-6">
         <div class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <i class="ph-bold ph-check text-xs"></i>
         </div>
@@ -463,15 +807,15 @@
     </div>
 
     @if (session()->has('error'))
-        <div class="m-6 flex items-center gap-3 rounded-md bg-destructive p-4 text-destructive-foreground shadow-sm">
+        <div class="m-3 flex items-center gap-3 rounded-md bg-destructive p-4 text-destructive-foreground shadow-sm sm:m-6">
             <i class="ph-fill ph-warning-circle text-2xl"></i>
             <span class="font-bold text-sm">{{ session('error') }}</span>
         </div>
     @endif
 
-    @if ($filterCategoryId !== '' || $filterStatus !== '' || $filterUrgent !== '' || $quickFilter !== '')
-        <div class="mb-4 flex flex-wrap items-center gap-2 px-6 pt-4">
-            @if ($quickFilter !== '')
+    @if ($filterAssigneeId !== '' || $filterCategoryId !== '' || $filterStatus !== '' || $filterUrgent !== '' || !in_array($quickFilter, ['', 'total'], true))
+        <div x-show="panelView === 'tasks'" class="mb-4 flex flex-wrap items-center gap-2 px-3 pt-4 sm:px-6">
+            @if (!in_array($quickFilter, ['', 'total'], true))
                 <span class="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
                     <i class="ph ph-faders text-sm"></i>
                     {{ match($quickFilter) {
@@ -489,6 +833,13 @@
                 <span class="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
                     <i class="ph ph-tag text-sm"></i>
                     {{ optional($categories->firstWhere('id', (int) $filterCategoryId))->name ?? 'Categoria' }}
+                </span>
+            @endif
+
+            @if ($filterAssigneeId !== '')
+                <span class="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+                    <i class="ph ph-user text-sm"></i>
+                    {{ optional($users->firstWhere('id', (int) $filterAssigneeId))->name ?? 'Responsável' }}
                 </span>
             @endif
 
@@ -513,7 +864,7 @@
         </div>
     @endif
 
-    <main class="flex-1 overflow-y-auto bg-muted/40 p-6 pb-32 custom-scrollbar">
+    <main x-show="panelView === 'tasks'" class="flex-1 overflow-y-auto bg-muted/40 p-3 pb-24 sm:p-6 sm:pb-32 custom-scrollbar">
         <div x-show="viewMode === 'list'" x-cloak
             class="mb-2 hidden grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_7rem_6rem_8rem] gap-4 px-4 text-[10px] font-medium text-muted-foreground lg:grid">
             <span>Código</span>
@@ -542,8 +893,12 @@
                     };
 
                     $showUrgentBadge = $isUrgent && !$isCompleted;
-                    $statusBadgeClass = 'border border-border bg-secondary text-secondary-foreground';
-                    $urgentBadgeClass = 'border border-destructive/30 bg-destructive/10 text-destructive';
+                    $statusBadgeClass = match ($status) {
+                        \App\Domain\Tasks\TaskStatus::Completed => 'border border-emerald-500/45 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                        \App\Domain\Tasks\TaskStatus::InProgress => 'border border-blue-500/45 bg-blue-500/15 text-blue-700 dark:text-blue-300',
+                        default => 'border border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-300',
+                    };
+                    $urgentBadgeClass = 'border border-red-500/50 bg-red-500/15 text-red-700 dark:text-red-300';
                 @endphp
                 <article
                     wire:key="task-{{ $task->id }}"
@@ -580,7 +935,7 @@
                     <div x-show="viewMode === 'grid'" x-cloak class="flex h-full flex-col p-4">
                         <div class="flex items-start justify-between gap-3">
                             <span class="text-sm font-semibold tracking-tight text-foreground">{{ $task->code }}</span>
-                            <span class="max-w-[45%] truncate rounded-sm border border-border bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                            <span class="max-w-[45%] truncate rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-foreground">
                                 {{ $task->category->name ?? 'Sem categoria' }}
                             </span>
                         </div>
@@ -588,6 +943,9 @@
                         <div class="mt-4 min-h-0 flex-1">
                             <h3 class="line-clamp-2 text-sm font-medium leading-5 text-foreground">{{ $task->title }}</h3>
                             <p class="mt-1 line-clamp-1 text-xs text-muted-foreground">{{ $task->location ?: 'Local não informado' }}</p>
+                            @if ($task->assignees->isNotEmpty())
+                                <p class="mt-1 flex items-center gap-1 truncate text-[10px] text-muted-foreground"><i class="ph ph-user" aria-hidden="true"></i>{{ $task->assignees->pluck('name')->join(', ') }}</p>
+                            @endif
                         </div>
 
                         <div class="mt-3 flex items-end justify-between gap-2 border-t border-border pt-3">
@@ -596,13 +954,13 @@
                             </span>
                             <div class="flex min-w-0 justify-end gap-1.5">
                                 @if($showUrgentBadge)
-                                    <span class="flex items-center gap-1 rounded-sm px-2 py-1 text-[10px] font-semibold {{ $urgentBadgeClass }}">
+                                    <span class="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $urgentBadgeClass }}">
                                         <i class="ph ph-warning-circle"></i>
                                         Urgente
                                     </span>
                                 @endif
 
-                                <span class="flex items-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-medium {{ $statusBadgeClass }}">
+                                <span class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $statusBadgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $statusDotClass }}"></span>
                                     {{ $status->label() }}
                                 </span>
@@ -611,7 +969,7 @@
                     </div>
 
                     <div x-show="viewMode === 'list'" x-cloak
-                        class="grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 lg:grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_7rem_6rem_8rem] lg:gap-4">
+                        class="grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4 lg:grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_7rem_6rem_8rem] lg:gap-4">
                         <span class="text-xs font-semibold text-foreground">{{ $task->code }}</span>
                         <div class="min-w-0" wire:dblclick="startInlineEdit({{ $task->id }}, 'title')" title="Clique duas vezes para editar o título">
                             @if ($inlineEditingTaskId === $task->id && $inlineEditingField === 'title')
@@ -619,11 +977,12 @@
                                     wire:keydown.escape.prevent="cancelInlineEdit" wire:blur="saveInlineEdit"
                                     x-on:click.stop x-on:dblclick.stop
                                     x-init="$nextTick(() => { $el.focus(); $el.select(); })"
-                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring">
+                                    class="h-8 w-full rounded-md border border-input bg-muted/50 px-2 text-sm shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring">
                                 @error('inlineEditValue') <span class="mt-1 block text-[10px] text-destructive">{{ $message }}</span> @enderror
                             @else
                                 <h3 class="truncate text-sm font-medium text-foreground">{{ $task->title }}</h3>
-                                <span class="mt-0.5 block text-[10px] text-muted-foreground lg:hidden">Duplo clique para editar</span>
+                                <span class="mt-0.5 block truncate text-[10px] text-muted-foreground">{{ $task->assignees->isNotEmpty() ? $task->assignees->pluck('name')->join(', ') : 'Sem responsável' }}</span>
+                                <span class="sr-only">Duplo clique para editar</span>
                             @endif
                         </div>
 
@@ -634,7 +993,7 @@
                                     x-on:click.stop x-on:dblclick.stop
                                     x-init="$nextTick(() => { $el.focus(); $el.select(); })"
                                     placeholder="Local não informado"
-                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm outline-none focus:ring-2 focus:ring-ring">
+                                    class="h-8 w-full rounded-md border border-input bg-muted/50 px-2 text-xs shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring">
                                 @error('inlineEditValue') <span class="mt-1 block text-[10px] text-destructive">{{ $message }}</span> @enderror
                             @else
                                 <p class="truncate text-xs text-muted-foreground">{{ $task->location ?: 'Local não informado' }}</p>
@@ -643,14 +1002,18 @@
 
                         <div class="min-w-0" wire:dblclick="startInlineEdit({{ $task->id }}, 'category_id')" title="Clique duas vezes para editar a categoria">
                             @if ($inlineEditingTaskId === $task->id && $inlineEditingField === 'category_id')
-                                <select wire:model="inlineEditValue" wire:change="saveInlineEdit"
-                                    wire:keydown.escape.prevent="cancelInlineEdit" x-init="$nextTick(() => $el.focus())"
-                                    x-on:click.stop x-on:dblclick.stop
-                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm outline-none focus:ring-2 focus:ring-ring">
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative z-20" x-data="{ open: true }" x-on:click.stop x-on:dblclick.stop x-on:click.outside="$wire.cancelInlineEdit()">
+                                    <button type="button" x-on:click="open = !open" class="flex h-8 w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-2 text-left text-xs shadow-sm outline-none focus:ring-2 focus:ring-ring">
+                                        <span class="min-w-0 flex-1 truncate">{{ optional($categories->firstWhere('id', (int) $inlineEditValue))->name ?? 'Categoria' }}</span><i class="ph ph-caret-down text-xs"></i>
+                                    </button>
+                                    <div x-show="open" x-cloak data-testid="inline-category-options" class="mt-1 max-h-44 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                                        @foreach($categories as $category)
+                                            <button type="button" wire:click="selectInlineCategory({{ $category->id }})" x-on:click="open = false" class="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent">
+                                                <span class="truncate">{{ $category->name }}</span>@if ((int) $inlineEditValue === $category->id)<i class="ph ph-check"></i>@endif
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
                                 @error('inlineEditValue') <span class="mt-1 block text-[10px] text-destructive">{{ $message }}</span> @enderror
                             @else
                                 <span class="block truncate text-xs text-muted-foreground">{{ $task->category->name ?? 'Sem categoria' }}</span>
@@ -663,7 +1026,7 @@
                                     wire:keydown.enter.prevent="saveInlineEdit" wire:keydown.escape.prevent="cancelInlineEdit"
                                     x-on:click.stop x-on:dblclick.stop
                                     x-init="$nextTick(() => $el.focus())"
-                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm outline-none focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark]">
+                                    class="h-8 w-full rounded-md border border-input bg-muted/50 px-2 text-xs shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark]">
                                 @error('inlineEditValue') <span class="mt-1 block text-[10px] text-destructive">{{ $message }}</span> @enderror
                             @else
                                 <span class="text-xs text-muted-foreground">
@@ -673,14 +1036,14 @@
                         </div>
 
                         <button type="button" wire:click.stop="toggleInlineUrgency({{ $task->id }})"
-                            class="flex items-center justify-center gap-1 rounded-sm px-2 py-1 text-[10px] font-semibold {{ $showUrgentBadge ? $urgentBadgeClass : 'border border-border bg-background text-muted-foreground' }}"
+                            class="flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $showUrgentBadge ? $urgentBadgeClass : 'border border-border bg-muted text-foreground' }}"
                             title="Clique para alternar a prioridade">
                             <i class="ph {{ $isUrgent ? 'ph-warning-circle' : 'ph-minus-circle' }}"></i>
                             {{ $isUrgent ? 'Urgente' : 'Normal' }}
                         </button>
 
                         <button type="button" wire:click.stop="cycleStatus({{ $task->id }})"
-                            class="flex items-center justify-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-medium {{ $statusBadgeClass }}"
+                            class="flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold {{ $statusBadgeClass }}"
                             title="Clique para avançar o status">
                                 <span class="h-1.5 w-1.5 rounded-full {{ $statusDotClass }}"></span>
                                 {{ $status->label() }}
@@ -702,7 +1065,7 @@
         @endif
     </main>
 
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 transition-opacity duration-200"
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 transition-opacity duration-200 sm:p-4"
          x-show="modalOpen" 
          x-transition:enter="ease-out duration-300" 
          x-transition:enter-start="opacity-0" 
@@ -712,18 +1075,39 @@
          x-transition:leave-end="opacity-0"
          x-cloak>
         
-        <div class="flex h-[96.8vh] max-h-[726px] w-full max-w-6xl transform flex-col overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg transition-[opacity,transform]"
+        <div class="flex h-[calc(100dvh-1rem)] max-h-[726px] w-full max-w-6xl transform flex-col overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg transition-[opacity,transform] sm:h-[calc(100dvh-2rem)]"
          x-show="modalOpen"
          x-transition:enter="ease-out duration-300"
          x-transition:enter-start="opacity-0 scale-95"
          x-transition:enter-end="opacity-100 scale-100"
          x-on:click.away="if (!$wire.showCategoryModal) $wire.closeModal()">            
-            <div class="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <h2 class="text-lg font-semibold tracking-tight text-foreground"
+            <div class="flex shrink-0 flex-col items-stretch gap-2 border-b border-border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+                <div class="flex min-w-0 items-center gap-2">
+                    <h2 class="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg"
                         x-text="mode === 'create' ? 'Nova Tarefa' : 'Editar Tarefa - ' + '{{ $form->taskId }}'"></h2>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex min-w-0 items-center justify-end gap-1 sm:gap-2">
+                    <div class="relative min-w-0 flex-1 sm:flex-none" x-data="{ open: false }" x-on:click.outside="open = false">
+                        <button type="button" x-on:click="open = !open" aria-label="Selecionar responsáveis"
+                            class="flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md border border-input bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-52">
+                            <i class="ph ph-user-circle-plus text-base" aria-hidden="true"></i>
+                            <span class="truncate">{{ count($form->assigneeIds) > 0 ? optional($users->firstWhere('id', (int) $form->assigneeIds[0]))->name.(count($form->assigneeIds) > 1 ? ' +'.(count($form->assigneeIds) - 1) : '') : 'Responsáveis' }}</span>
+                            <i class="ph ph-caret-down text-[10px]" aria-hidden="true"></i>
+                        </button>
+                        <div x-show="open" x-cloak x-transition class="absolute left-0 z-50 mt-1 w-[min(16rem,calc(100vw-2.5rem))] rounded-md border border-border bg-popover p-1.5 text-popover-foreground shadow-md sm:left-auto sm:right-0 sm:w-64">
+                            <p class="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Designar usuários</p>
+                            <div class="max-h-48 overflow-y-auto custom-scrollbar">
+                                @forelse ($users as $user)
+                                    <button type="button" wire:click.stop="toggleAssignee({{ $user->id }})" class="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs transition-colors hover:bg-accent">
+                                        <span class="min-w-0 flex-1 truncate">{{ $user->name }}</span>
+                                        @if (in_array($user->id, array_map('intval', $form->assigneeIds), true))<i class="ph ph-check text-sm" aria-hidden="true"></i>@endif
+                                    </button>
+                                @empty
+                                    <p class="px-2 py-3 text-xs text-muted-foreground">Nenhum usuário vinculado à equipe.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
                     <button type="button" x-on:click="modalView = 'details'" aria-label="Exibir detalhes da tarefa"
                         :class="modalView === 'details' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'"
                         class="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
@@ -746,7 +1130,7 @@
             <form wire:submit="save" class="flex flex-1 flex-col overflow-hidden">
                 <div class="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:overflow-hidden" x-show="modalView === 'details'">
                 <div class="flex min-h-0 flex-col">
-                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 lg:p-6 custom-scrollbar">
+                <div class="min-h-0 flex-1 space-y-4 overflow-visible p-4 sm:p-5 lg:overflow-y-auto lg:p-6 custom-scrollbar">
                     
                     @if ($errors->any())
                         <div class="rounded-md border border-red-100 bg-red-50 p-3 text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
@@ -761,36 +1145,54 @@
                     <div>
                         <label class="mb-1.5 block text-xs font-medium text-foreground">Título da tarefa</label>
                         <input wire:model="form.title" type="text" placeholder="Ex: Reparo de calçada"
-                            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring">
+                            data-testid="task-title-input"
+                            class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
                         @error('form.title') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
 
                     <div>
                         <label class="mb-1.5 block text-xs font-medium text-foreground">Localização</label>
                         <input wire:model="form.location" type="text" placeholder="Nome da rua, bairro ou praça"
-                            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring">
+                            class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
                         @error('form.location') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-xs font-medium text-foreground">Categoria</label>
-                            <div class="space-y-2">
-                                <select wire:model.live="form.categoryId" class="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring">
-                                    <option value="">Selecione...</option>
+                            <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
+                                <button type="button" x-on:click="open = !open" x-bind:aria-expanded="open"
+                                    class="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-3 text-left text-sm shadow-sm outline-none transition-colors hover:bg-accent/50 focus:bg-background focus:ring-2 focus:ring-ring">
+                                    <i class="ph ph-tag text-sm text-muted-foreground" aria-hidden="true"></i>
+                                    <span class="min-w-0 flex-1 truncate">{{ optional($categories->firstWhere('id', (int) $form->categoryId))->name ?? 'Selecione uma categoria' }}</span>
+                                    <i class="ph ph-caret-down text-xs text-muted-foreground transition-transform" :class="open ? 'rotate-180' : ''" aria-hidden="true"></i>
+                                </button>
+                                <div x-show="open" x-cloak x-transition class="absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md custom-scrollbar">
                                     @foreach($categories as $category)
-                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        <button type="button" wire:click="$set('form.categoryId', {{ $category->id }})" x-on:click="open = false"
+                                            class="flex w-full items-center justify-between rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+                                            <span class="truncate">{{ $category->name }}</span>
+                                            @if ((int) $form->categoryId === $category->id)<i class="ph ph-check text-sm" aria-hidden="true"></i>@endif
+                                        </button>
                                     @endforeach
                                     @can('create', \App\Models\Category::class)
-                                        <option value="new" class="border-t font-medium">+ Criar nova categoria...</option>
+                                        <button type="button" wire:click="openCategoryModal" x-on:click="open = false" class="mt-1 flex w-full items-center gap-2 border-t border-border px-2.5 py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground">
+                                            <i class="ph ph-plus" aria-hidden="true"></i>Criar nova categoria
+                                        </button>
                                     @endcan
-                                </select>
-                                @error('form.categoryId') <span class="block text-xs text-red-500">{{ $message }}</span> @enderror
+                                </div>
                             </div>
+                            @error('form.categoryId') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="mb-1.5 block text-xs font-medium text-foreground">Prazo</label>
-                            <input wire:model="form.dueDate" type="date" class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark]">
+                            <div class="relative" x-data>
+                                <i class="ph ph-calendar-blank pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
+                                <input x-ref="taskDueDate" wire:model="form.dueDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-9 pr-10 text-sm shadow-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                                <button type="button" x-on:click="$refs.taskDueDate.showPicker ? $refs.taskDueDate.showPicker() : $refs.taskDueDate.focus()" aria-label="Abrir calendário" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                                    <i class="ph ph-caret-down text-xs" aria-hidden="true"></i>
+                                </button>
+                            </div>
                             @error('form.dueDate') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                         </div>
                     </div>
@@ -809,8 +1211,8 @@
                                     <span class="text-xs text-muted-foreground">Destaca esta tarefa no painel.</span>
                                 </div>
                             </div>
-                            <div class="flex h-4 w-4 items-center justify-center rounded-sm border border-primary transition-colors"
-                                 :class="$wire.form.isUrgent ? 'bg-primary text-primary-foreground' : 'bg-background'">
+                            <div class="flex h-5 w-5 items-center justify-center rounded-sm border transition-colors"
+                                 :class="$wire.form.isUrgent ? 'border-red-600 bg-red-600 text-white shadow-sm' : 'border-zinc-950 bg-zinc-950 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950'">
                                 <i class="ph ph-check text-[10px] font-bold" x-show="$wire.form.isUrgent"></i>
                             </div>
                         </div>
@@ -819,7 +1221,7 @@
                     <div>
                         <label class="mb-1.5 block text-xs font-medium text-foreground">Observação</label>
                         <textarea wire:model="form.observation" rows="3" placeholder="Informações extras..."
-                            class="block w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"></textarea>
+                            class="block w-full resize-none rounded-md border border-input bg-muted/50 px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring"></textarea>
                     </div>
 
                     <div>
@@ -855,7 +1257,7 @@
                     </div>
                 </div>
 
-                <div class="shrink-0 border-t border-border bg-background px-5 py-4 lg:px-6">
+                <div class="shrink-0 border-t border-border bg-background px-4 py-3 sm:px-5 sm:py-4 lg:px-6">
                     <div class="flex gap-3">
                         <button type="button" x-on:click="$wire.closeModal()"
                             class="h-9 flex-1 rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
@@ -869,7 +1271,7 @@
                 </div>
                 </div>
 
-                <aside class="flex min-h-[380px] flex-col border-t border-border bg-muted/40 p-5 lg:min-h-0 lg:overflow-hidden lg:border-l lg:border-t-0 lg:p-6" aria-label="Checklist da tarefa">
+                <aside class="flex min-h-[22rem] flex-col border-t border-border bg-muted/40 p-4 sm:p-5 lg:min-h-0 lg:overflow-hidden lg:border-l lg:border-t-0 lg:p-6" aria-label="Checklist da tarefa">
                     <div class="flex items-center justify-between gap-3 mb-2 shrink-0">
                         <div>
                             <label class="block text-sm font-semibold tracking-tight text-foreground">Checklist</label>
@@ -900,22 +1302,20 @@
                     <ul class="space-y-2 flex-1 overflow-y-auto custom-scrollbar mb-4 min-h-0">
                         @forelse ($form->checklistItems as $index => $item)
                             <li wire:key="checklist-item-{{ $index }}"
-                                class="group flex items-center gap-3 rounded-md border border-border bg-card p-2.5 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
-                                <button type="button"
-                                    wire:click="toggleChecklistItem({{ $index }})"
-                                    aria-label="Alternar conclusão de {{ $item['label'] }}"
-                                    class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border border-primary transition-colors {{ !empty($item['is_completed']) ? 'bg-primary text-primary-foreground' : 'bg-background' }}">
-                                    <i class="ph ph-check text-[10px] {{ !empty($item['is_completed']) ? '' : 'hidden' }}"></i>
+                                class="group flex items-center rounded-md border border-border bg-card text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
+                                <button type="button" wire:click="toggleChecklistItem({{ $index }})"
+                                    class="flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left"
+                                    aria-label="Alternar conclusão de {{ $item['label'] }}">
+                                    <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border border-primary transition-colors {{ !empty($item['is_completed']) ? 'bg-primary text-primary-foreground' : 'bg-background' }}">
+                                        <i class="ph ph-check text-[10px] {{ !empty($item['is_completed']) ? '' : 'hidden' }}"></i>
+                                    </span>
+                                    <span class="flex-1 truncate text-sm {{ !empty($item['is_completed']) ? 'text-muted-foreground line-through' : 'text-foreground' }}">{{ $item['label'] }}</span>
                                 </button>
-
-                                <span class="flex-1 truncate text-sm {{ !empty($item['is_completed']) ? 'text-muted-foreground line-through' : 'text-foreground' }}">
-                                    {{ $item['label'] }}
-                                </span>
 
                                 <button type="button"
                                     wire:click="removeChecklistItem({{ $index }})"
                                     aria-label="Remover {{ $item['label'] }} do checklist"
-                                    class="text-muted-foreground opacity-0 transition-colors hover:text-destructive focus:opacity-100 group-hover:opacity-100">
+                                    class="mr-2.5 text-muted-foreground opacity-0 transition-colors hover:text-destructive focus:opacity-100 group-hover:opacity-100">
                                     <i class="ph ph-trash text-lg"></i>
                                 </button>
                             </li>
@@ -931,7 +1331,7 @@
                     <div class="flex gap-2 shrink-0 pt-2 border-t border-transparent">
                         <input wire:model.live="form.newChecklistItem" type="text" placeholder="Adicionar etapa..."
                             wire:keydown.enter.prevent="addChecklistItem"
-                            class="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring">
+                            class="h-9 flex-1 rounded-md border border-input bg-muted/60 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
                         <button type="button" wire:click="addChecklistItem"
                             aria-label="Adicionar item ao checklist"
                             class="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -942,7 +1342,7 @@
                 </aside>
                 </div>
 
-                <div class="flex flex-col h-full overflow-hidden p-6" x-show="modalView === 'history'">
+                <div class="flex h-full flex-col overflow-hidden p-4 sm:p-6" x-show="modalView === 'history'">
                     <div class="flex items-center justify-between gap-3 mb-2 shrink-0">
                         <label class="block text-sm font-semibold tracking-tight text-foreground">Histórico de alterações</label>
                         <span class="text-[11px] font-medium text-muted-foreground">
@@ -986,16 +1386,35 @@
                                         <div class="space-y-3 rounded-md border border-border bg-muted/50 p-3">
                                             @foreach($item['metadata'] as $key => $diff)
                                                 @if($key !== 'checklist')
+                                                    @php
+                                                        $formatHistoryValue = static function (mixed $value) use ($key, $users): string {
+                                                            if (! is_array($value)) {
+                                                                return (string) $value;
+                                                            }
+
+                                                            if ($key === 'assignee_ids') {
+                                                                return collect($value)
+                                                                    ->map(fn ($id) => $users->firstWhere('id', (int) $id)?->name)
+                                                                    ->filter()
+                                                                    ->join(', ') ?: 'Sem responsável';
+                                                            }
+
+                                                            return collect($value)->map(fn ($entry) => is_scalar($entry) ? (string) $entry : '')
+                                                                ->filter()->join(', ');
+                                                        };
+                                                        $historyFrom = $formatHistoryValue($diff['from'] ?? '');
+                                                        $historyTo = $formatHistoryValue($diff['to'] ?? '');
+                                                    @endphp
                                                     <div>
                                                         <span class="mb-1 block text-[10px] font-medium text-muted-foreground">Alteração em {{ config('app.locale') === 'pt_BR' ? trans("fields.{$key}") : $key }}</span>
                                                         <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                                                             <div class="flex-1 px-2 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/30 line-through decoration-red-300 dark:decoration-red-800 break-all">
-                                                                {{ $diff['from'] }}
+                                                                {{ $historyFrom }}
                                                             </div>
                                                             <i class="ph ph-arrow-right hidden shrink-0 text-muted-foreground sm:block"></i>
                                                             <i class="ph ph-arrow-down shrink-0 self-center text-muted-foreground sm:hidden"></i>
                                                             <div class="flex-1 px-2 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded border border-emerald-100 dark:border-emerald-900/30 break-all">
-                                                                {{ $diff['to'] }}
+                                                                {{ $historyTo }}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1081,7 +1500,7 @@
                         <label class="block text-xs font-medium text-foreground">Nome da categoria</label>
                         <input wire:model="newCategoryName" type="text" placeholder="Ex: Manutencao Eletrica"
                             wire:keydown.enter.prevent="createNewCategory"
-                            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring">
+                            class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
                         @error('newCategoryName')
                             <span class="text-[10px] font-bold text-red-500 uppercase tracking-tight">{{ $message }}</span>
                         @enderror

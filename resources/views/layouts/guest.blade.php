@@ -16,17 +16,19 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
-            <div>
-                <a href="/" wire:navigate class="flex flex-col items-center gap-3">
-                    <x-application-logo class="w-12 h-12 text-gray-600 dark:text-gray-300" />
-                    <span class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ config('app.name') }}</span>
+    <body class="font-sans antialiased">
+        <div class="flex min-h-[100dvh] items-center justify-center bg-muted/40 px-3 py-6 text-foreground sm:px-4 sm:py-10">
+            <div class="w-full max-w-sm">
+                <a href="/" wire:navigate class="mb-6 block text-center">
+                    <span class="text-xl font-semibold tracking-tight text-foreground">{{ config('app.name') }}</span>
+                    <span class="mt-1 block text-sm text-muted-foreground">Gestão de equipes e tarefas</span>
                 </a>
-            </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                <main class="overflow-hidden rounded-shadcn border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-7">
+                    {{ $slot }}
+                </main>
+
+                <p class="mt-5 text-center text-xs text-muted-foreground">Acesso restrito a usuários autorizados.</p>
             </div>
         </div>
     </body>

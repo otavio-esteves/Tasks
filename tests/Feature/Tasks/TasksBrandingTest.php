@@ -17,7 +17,10 @@ class TasksBrandingTest extends TestCase
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('Tasks Example');
+            ->assertSee('Tasks Example')
+            ->assertSee('Acessar sua conta')
+            ->assertSee('Gestão de equipes e tarefas')
+            ->assertSee('data-testid="login-card"', false);
 
         $team = Team::factory()->create(['name' => 'Atendimento']);
         $user = User::factory()->create(['team_id' => $team->id]);

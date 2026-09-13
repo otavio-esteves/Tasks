@@ -1,94 +1,149 @@
-<div class="py-12">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-            
-            @if (session()->has('message'))
-                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
-                    {{ session('message') }}
+<div class="min-h-0 bg-background text-foreground">
+    <main class="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Configurações</p>
+                <h1 class="text-2xl font-semibold tracking-tight">Categorias</h1>
+                <p class="mt-1 text-sm text-muted-foreground">Organize as categorias disponíveis para cada equipe.</p>
+            </div>
+
+            <button type="button" wire:click="create"
+                class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                <i class="ph ph-plus text-base" aria-hidden="true"></i>
+                Nova categoria
+            </button>
+        </div>
+
+        @if (session()->has('message'))
+            <div class="mb-4 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300" role="status">
+                <i class="ph ph-check-circle text-base" aria-hidden="true"></i>
+                <span>{{ session('message') }}</span>
+            </div>
+        @endif
+
+        <section class="overflow-hidden rounded-shadcn border border-border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="relative w-full sm:max-w-sm">
+                    <i class="ph ph-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
+                    <label for="category-search" class="sr-only">Buscar categorias</label>
+                    <input id="category-search" wire:model.live.debounce.300ms="search" type="search" placeholder="Buscar categorias..."
+                        class="h-9 w-full rounded-md border border-input bg-muted/50 py-2 pl-9 pr-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-1 focus:ring-ring">
+                </div>
+
+                <span class="text-xs text-muted-foreground">{{ $categories->total() }} {{ $categories->total() === 1 ? 'categoria cadastrada' : 'categorias cadastradas' }}</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[38rem] text-left text-sm">
+                    <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
+                        <tr>
+                            <th scope="col" class="h-10 px-4 font-medium">Categoria</th>
+                            <th scope="col" class="h-10 px-4 font-medium">Equipe responsável</th>
+                            <th scope="col" class="h-10 px-4 text-right font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        @forelse($categories as $category)
+                            <tr wire:key="category-{{ $category->id }}" class="transition-colors hover:bg-muted/40">
+                                <td class="px-4 py-3">
+                                    <div class="font-medium text-foreground">{{ $category->name }}</div>
+                                    <div class="mt-0.5 max-w-2xl text-xs text-muted-foreground">{{ $category->description ?: 'Sem descrição informada.' }}</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                        <i class="ph ph-users-three" aria-hidden="true"></i>
+                                        {{ $category->team->name }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button type="button" wire:click="edit({{ $category->id }})"
+                                            class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            aria-label="Editar categoria {{ $category->name }}">
+                                            <i class="ph ph-pencil-simple" aria-hidden="true"></i>
+                                            Editar
+                                        </button>
+                                        <button type="button" wire:click="delete({{ $category->id }})" wire:confirm="Tem certeza que deseja mover para a lixeira?"
+                                            class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            aria-label="Excluir categoria {{ $category->name }}">
+                                            <i class="ph ph-trash" aria-hidden="true"></i>
+                                            Excluir
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-6 py-12 text-center">
+                                    <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                                        <i class="ph ph-tag text-xl" aria-hidden="true"></i>
+                                    </div>
+                                    <p class="mt-3 text-sm font-medium">Nenhuma categoria encontrada</p>
+                                    <p class="mt-1 text-xs text-muted-foreground">Ajuste a busca ou cadastre uma nova categoria.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if($categories->hasPages())
+                <div class="border-t border-border px-4 py-3">
+                    {{ $categories->links() }}
                 </div>
             @endif
+        </section>
+    </main>
 
-            <div class="flex justify-between items-center mb-6">
-                <input wire:model.live="search" type="text" placeholder="Buscar categorias..." class="border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-1/3">
-                <button wire:click="create()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition">
-                    Nova Categoria
-                </button>
-            </div>
-
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="p-3 border-b">Nome</th>
-                        <th class="p-3 border-b">Equipe</th>
-                        <th class="p-3 border-b text-center">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($categories as $category)
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 border-b">{{ $category->name }}</td>
-                            <td class="p-3 border-b">
-                                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                                    {{ $category->team->name }}
-                                </span>
-                            </td>
-                            <td class="p-3 border-b text-center">
-                                <button wire:click="edit({{ $category->id }})" class="text-blue-600 hover:underline mr-3">Editar</button>
-                                <button wire:click="delete({{ $category->id }})" wire:confirm="Tem certeza que deseja mover para a lixeira?" class="text-red-600 hover:underline">Excluir</button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="mt-4">
-                {{ $categories->links() }}
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal de Formulário --}}
     @if($isModalOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
-            <div class="fixed inset-0 bg-black opacity-50"></div>
-            <div class="relative w-full max-w-lg mx-auto my-6 z-50">
-                <div class="bg-white rounded-md shadow-sm relative flex flex-col w-full outline-none focus:outline-none">
-                    <div class="p-6 border-b border-solid border-gray-200 rounded-t">
-                        <h3 class="text-xl font-semibold">{{ $form->selected_id ? 'Editar Categoria' : 'Nova Categoria' }}</h3>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
+            <div class="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-shadcn border border-border bg-background text-foreground shadow-lg custom-scrollbar">
+                <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4">
+                    <div class="min-w-0">
+                        <h2 id="category-modal-title" class="text-base font-semibold tracking-tight">{{ $form->selected_id ? 'Editar categoria' : 'Nova categoria' }}</h2>
+                        <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ $form->selected_id ? 'Atualize os dados da categoria selecionada.' : 'Defina a equipe responsável e os dados da categoria.' }}</p>
                     </div>
-                    
-                    <div class="p-6 flex-auto">
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Equipe Responsável</label>
-                            <select wire:model="form.team_id" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Selecione uma equipe...</option>
-                                @foreach($teams as $sec)
-                                    <option value="{{ $sec->id }}">{{ $sec->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('form.team_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    <button type="button" wire:click="closeModal" aria-label="Fechar formulário"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <i class="ph ph-x text-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <form wire:submit="store">
+                    <div class="space-y-4 p-4 sm:px-5 sm:py-5">
+                        <div class="space-y-1.5">
+                            <label for="category-team" class="text-xs font-medium text-foreground">Equipe responsável</label>
+                            <x-system-select id="category-team" model="form.team_id" :value="$form->team_id" :options="$teams->pluck('name', 'id')->all()" placeholder="Selecione uma equipe..." icon="users-three" />
+                            @error('form.team_id') <p class="text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
 
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Nome da Categoria</label>
-                            <input type="text" wire:model="form.name" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            @error('form.name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <div class="space-y-1.5">
+                            <label for="category-name" class="text-xs font-medium text-foreground">Nome da categoria</label>
+                            <input id="category-name" type="text" wire:model="form.name" autocomplete="off"
+                                class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-1 focus:ring-ring">
+                            @error('form.name') <p class="text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
 
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Descrição (Opcional)</label>
-                            <textarea wire:model="form.description" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                            @error('form.description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <div class="space-y-1.5">
+                            <label for="category-description" class="text-xs font-medium text-foreground">Descrição <span class="font-normal text-muted-foreground">(opcional)</span></label>
+                            <textarea id="category-description" wire:model="form.description" rows="4"
+                                class="w-full resize-none rounded-md border border-input bg-muted/50 px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-1 focus:ring-ring"></textarea>
+                            @error('form.description') <p class="text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
-                    <div class="p-6 border-t border-solid border-gray-200 rounded-b flex justify-end">
-                        <button wire:click="closeModal()" class="text-gray-500 font-bold py-2 px-4 mr-2">Cancelar</button>
-                        <button wire:click="store()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    <div class="flex items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:px-5">
+                        <button type="button" wire:click="closeModal"
+                            class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <i class="ph ph-floppy-disk text-base" aria-hidden="true"></i>
                             Salvar
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     @endif
