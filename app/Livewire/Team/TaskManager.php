@@ -505,6 +505,13 @@ class TaskManager extends Component
         $this->resetPage();
     }
 
+    public function openIndicators(): void
+    {
+        $this->reset(['search', 'filterAssigneeId', 'filterCategoryId', 'filterStatus', 'filterUrgent']);
+        $this->quickFilter = 'total';
+        $this->resetPage();
+    }
+
     public function applyQuickFilter(string $filter): void
     {
         if ($filter === 'total') {

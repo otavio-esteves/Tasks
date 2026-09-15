@@ -8,7 +8,7 @@
             </div>
 
             <button type="button" wire:click="create"
-                class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto">
                 <i class="ph ph-plus text-base" aria-hidden="true"></i>
                 Nova equipe
             </button>
@@ -33,7 +33,7 @@
                 <span class="text-xs text-muted-foreground">{{ $teams->total() }} {{ $teams->total() === 1 ? 'equipe cadastrada' : 'equipes cadastradas' }}</span>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="hidden overflow-x-auto sm:block">
                 <table class="w-full min-w-[38rem] text-left text-sm">
                     <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
                         <tr>
@@ -89,6 +89,17 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <div class="divide-y divide-border sm:hidden">
+                @forelse($teams as $team)
+                    <article wire:key="team-card-{{ $team->id }}" class="space-y-3 px-4 py-3">
+                        <div class="flex min-w-0 items-start gap-2"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground"><i class="ph-duotone ph-{{ $team->icon }}" aria-hidden="true"></i></span><div class="min-w-0"><h2 class="truncate text-sm font-medium">{{ $team->name }}</h2><p class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{{ $team->description ?: 'Sem descrição informada.' }}</p></div></div>
+                        <div class="flex items-center justify-between"><span class="text-xs text-muted-foreground">Categorias</span><span class="inline-flex min-w-7 items-center justify-center rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">{{ $team->categories_count }}</span></div>
+                        <div class="grid grid-cols-2 gap-2"><button type="button" wire:click="edit({{ $team->id }})" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background text-xs font-medium text-foreground shadow-sm"><i class="ph ph-pencil-simple" aria-hidden="true"></i>Editar</button><button type="button" wire:click="delete({{ $team->id }})" wire:confirm="Tem certeza que deseja mover para a lixeira?" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-destructive/30 text-xs font-medium text-destructive"><i class="ph ph-trash" aria-hidden="true"></i>Excluir</button></div>
+                    </article>
+                @empty
+                    <p class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma equipe encontrada.</p>
+                @endforelse
             </div>
 
             @if($teams->hasPages())
@@ -149,7 +160,7 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:px-5">
+                    <div class="grid grid-cols-2 gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:flex sm:justify-end sm:px-5">
                         <button type="button" wire:click="closeModal"
                             class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             Cancelar

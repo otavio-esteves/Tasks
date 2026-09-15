@@ -115,7 +115,8 @@ class Task extends Model
 
             $query->whereRaw('LOWER(code) LIKE ?', [$like])
                 ->orWhereRaw('LOWER(title) LIKE ?', [$like])
-                ->orWhereRaw('LOWER(location) LIKE ?', [$like]);
+                ->orWhereRaw('LOWER(location) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(observation) LIKE ?', [$like]);
         });
     }
 

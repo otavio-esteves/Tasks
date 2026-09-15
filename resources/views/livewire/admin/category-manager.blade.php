@@ -8,7 +8,7 @@
             </div>
 
             <button type="button" wire:click="create"
-                class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto">
                 <i class="ph ph-plus text-base" aria-hidden="true"></i>
                 Nova categoria
             </button>
@@ -33,7 +33,7 @@
                 <span class="text-xs text-muted-foreground">{{ $categories->total() }} {{ $categories->total() === 1 ? 'categoria cadastrada' : 'categorias cadastradas' }}</span>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="hidden overflow-x-auto sm:block">
                 <table class="w-full min-w-[38rem] text-left text-sm">
                     <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
                         <tr>
@@ -86,6 +86,17 @@
                     </tbody>
                 </table>
             </div>
+            <div class="divide-y divide-border sm:hidden">
+                @forelse($categories as $category)
+                    <article wire:key="category-card-{{ $category->id }}" class="space-y-3 px-4 py-3">
+                        <div class="min-w-0"><h2 class="truncate text-sm font-medium">{{ $category->name }}</h2><p class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{{ $category->description ?: 'Sem descrição informada.' }}</p></div>
+                        <span class="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground"><i class="ph ph-users-three shrink-0" aria-hidden="true"></i><span class="truncate">{{ $category->team->name }}</span></span>
+                        <div class="grid grid-cols-2 gap-2"><button type="button" wire:click="edit({{ $category->id }})" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background text-xs font-medium text-foreground shadow-sm"><i class="ph ph-pencil-simple" aria-hidden="true"></i>Editar</button><button type="button" wire:click="delete({{ $category->id }})" wire:confirm="Tem certeza que deseja mover para a lixeira?" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-destructive/30 text-xs font-medium text-destructive"><i class="ph ph-trash" aria-hidden="true"></i>Excluir</button></div>
+                    </article>
+                @empty
+                    <p class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma categoria encontrada.</p>
+                @endforelse
+            </div>
 
             @if($categories->hasPages())
                 <div class="border-t border-border px-4 py-3">
@@ -132,7 +143,7 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:px-5">
+                    <div class="grid grid-cols-2 gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:flex sm:justify-end sm:px-5">
                         <button type="button" wire:click="closeModal"
                             class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             Cancelar

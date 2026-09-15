@@ -261,6 +261,7 @@ class EloquentTaskRepository implements TaskRepository
         $listQuery->when($quickFilter === 'urgent', fn ($query) => $query
             ->where('is_urgent', true)
             ->where('status', '!=', TaskStatus::Completed->value))
+            ->when($quickFilter === 'pending', fn ($query) => $query->where('status', TaskStatus::Pending->value))
             ->when($quickFilter === 'in_progress', fn ($query) => $query->where('status', TaskStatus::InProgress->value))
             ->when($quickFilter === 'completed', fn ($query) => $query->where('status', TaskStatus::Completed->value))
             ->when($quickFilter === 'overdue', fn ($query) => $query

@@ -20,6 +20,7 @@ use App\Policies\CategoryPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\TeamPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -42,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::defaultView('vendor.pagination.tasks');
+
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Team::class, TeamPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);

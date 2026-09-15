@@ -16,6 +16,15 @@
         viewMode: localStorage.getItem('taskViewMode') === 'list' ? 'list' : 'grid'
      }"
      x-init="
+        const mobileView = window.matchMedia('(max-width: 767px)');
+        const enforceCardView = () => {
+            if (mobileView.matches) {
+                viewMode = 'grid';
+                localStorage.setItem('taskViewMode', 'grid');
+            }
+        };
+        enforceCardView();
+        mobileView.addEventListener('change', enforceCardView);
         document.documentElement.classList.add('dark');
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -56,10 +65,10 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         x-cloak
-        class="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-sm z-40"></div>
+        class="fixed inset-0 z-40 bg-zinc-950/20 transition-opacity motion-reduce:transition-none dark:bg-black/50"></div>
 
     <aside id="sidebar"
-        class="fixed left-0 top-0 z-50 flex h-[100dvh] w-[calc(100vw-1rem)] max-w-[23.4rem] transform flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 ease-out sm:w-[23.4rem]"
+        class="fixed left-0 top-0 z-50 flex h-[100dvh] w-[calc(100vw-1rem)] max-w-[23.4rem] transform-gpu flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none sm:w-[23.4rem]"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
         
         <div class="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar p-2.5">
@@ -85,6 +94,7 @@
                     </button>
 
                     <button type="button" data-testid="indicators-view-trigger"
+                        wire:click="openIndicators"
                         x-on:click="panelView = 'indicators'; sidebarOpen = false"
                         class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                         :class="panelView === 'indicators' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
@@ -359,8 +369,8 @@
                     </button>
                 </div>
 
-                <div class="overflow-x-auto border-b border-border p-2 md:hidden">
-                    <div class="grid min-w-[25rem] grid-cols-4 gap-1">
+                <div class="border-b border-border p-2 md:hidden">
+                    <div class="grid grid-cols-2 gap-1">
                         <button type="button" x-on:click="settingsTab = 'profile'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'profile' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Perfil</button>
                         <button type="button" x-on:click="settingsTab = 'security'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'security' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Segurança</button>
                         <button type="button" x-on:click="settingsTab = 'theme'" class="h-9 rounded-md px-2 text-xs font-medium" :class="settingsTab === 'theme' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'">Tema</button>
@@ -409,15 +419,15 @@
                                 </button>
 
                                 <button x-on:click="localStorage.theme = 'dark'; document.documentElement.classList.add('dark')"
-                                    class="group relative flex flex-col gap-3 rounded-shadcn border bg-slate-950 p-3 text-left text-slate-50 shadow-sm transition-colors hover:bg-slate-900"
+                                    class="group relative flex flex-col gap-3 rounded-shadcn border bg-zinc-950 p-3 text-left text-zinc-50 shadow-sm transition-colors hover:bg-zinc-900"
                                     :class="localStorage.theme === 'dark' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
-                                    <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950">
-                                        <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-slate-800"></div>
-                                        <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-slate-800"></div>
+                                    <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-zinc-800 bg-zinc-950">
+                                        <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-zinc-800"></div>
+                                        <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-zinc-800"></div>
                                     </div>
                                     <div>
                                         <span class="mb-0.5 block text-sm font-medium">Modo escuro</span>
-                                        <span class="block text-xs text-slate-400">Confortável para ambientes com pouca luz.</span>
+                                        <span class="block text-xs text-zinc-400">Confortável para ambientes com pouca luz.</span>
                                     </div>
                                 </button>
 
@@ -426,7 +436,7 @@
                                     :class="!('theme' in localStorage) ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
                                     <div class="relative flex aspect-[4/3] w-full overflow-hidden rounded-md border border-border">
                                         <div class="h-full w-1/2 bg-muted"></div>
-                                        <div class="h-full w-1/2 bg-slate-900"></div>
+                                        <div class="h-full w-1/2 bg-zinc-900"></div>
                                         <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-muted-foreground/40"></div>
                                         <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-muted-foreground/40"></div>
                                     </div>
@@ -472,7 +482,7 @@
     @php
         $pendingTasks = max(0, $summary['total'] - $summary['in_progress'] - $summary['completed']);
         $teamIndicators = [
-            ['label' => 'Total', 'value' => $summary['total'], 'icon' => 'files', 'bar' => 'bg-slate-500', 'text' => 'text-slate-500'],
+            ['label' => 'Total', 'value' => $summary['total'], 'icon' => 'files', 'bar' => 'bg-zinc-500', 'text' => 'text-zinc-500'],
             ['label' => 'Pendentes', 'value' => $pendingTasks, 'icon' => 'hourglass', 'bar' => 'bg-amber-500', 'text' => 'text-amber-500'],
             ['label' => 'Urgentes', 'value' => $summary['urgent'], 'icon' => 'warning-circle', 'bar' => 'bg-red-500', 'text' => 'text-red-500'],
             ['label' => 'Vencidas', 'value' => $summary['overdue'], 'icon' => 'calendar-x', 'bar' => 'bg-amber-500', 'text' => 'text-amber-500'],
@@ -509,9 +519,23 @@
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight">Panorama operacional</h2>
                     <p class="mt-1 text-sm text-muted-foreground">Distribuição atual das tarefas de {{ $team->name }}.</p>
                 </div>
-                <div class="w-full sm:w-64">
-                    <label for="indicator-user-filter" class="mb-1 block text-[11px] font-medium text-muted-foreground">Responsável</label>
-                    <x-system-select id="indicator-user-filter" model="filterAssigneeId" :value="$filterAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos os usuários" icon="user" />
+                <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
+                    <div class="min-w-40">
+                        <label for="indicator-user-filter" class="mb-1 block text-[11px] font-medium text-muted-foreground">Responsável</label>
+                        <x-system-select id="indicator-user-filter" model="filterAssigneeId" :value="$filterAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos" icon="user" />
+                    </div>
+                    <div class="min-w-40">
+                        <label class="mb-1 block text-[11px] font-medium text-muted-foreground">Categoria</label>
+                        <x-system-select model="filterCategoryId" :value="$filterCategoryId" :options="$categories->pluck('name', 'id')->all()" placeholder="Todas" icon="tag" />
+                    </div>
+                    <div class="min-w-40">
+                        <label class="mb-1 block text-[11px] font-medium text-muted-foreground">Status</label>
+                        <x-system-select model="filterStatus" :value="$filterStatus" :options="collect($statusOptions)->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()" placeholder="Todos" icon="clock" />
+                    </div>
+                    <div class="min-w-40">
+                        <label class="mb-1 block text-[11px] font-medium text-muted-foreground">Urgência</label>
+                        <x-system-select model="filterUrgent" :value="$filterUrgent" :options="['1' => 'Somente urgentes', '0' => 'Somente não urgentes']" placeholder="Todas" icon="warning-circle" />
+                    </div>
                 </div>
             </div>
 
@@ -592,7 +616,7 @@
                     <h3 id="indicator-task-list-title" class="text-sm font-semibold">Tarefas dos indicadores</h3>
                     <p class="mt-1 text-xs text-muted-foreground">{{ $tasks->total() }} registros encontrados com os filtros atuais.</p>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="hidden overflow-x-auto sm:block">
                     <table class="w-full min-w-[42rem] text-left text-sm">
                         <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
                             <tr><th class="h-10 px-4 font-medium">Código</th><th class="h-10 px-4 font-medium">Tarefa</th><th class="h-10 px-4 font-medium">Responsáveis</th><th class="h-10 px-4 font-medium">Status</th><th class="h-10 px-4 font-medium">Prazo</th></tr>
@@ -605,6 +629,20 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="divide-y divide-border sm:hidden">
+                    @forelse ($tasks as $task)
+                        <article class="space-y-2 px-4 py-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0"><p class="text-[10px] font-medium text-muted-foreground">{{ $task->code }}</p><h4 class="mt-0.5 truncate text-sm font-medium">{{ $task->title }}</h4></div>
+                                <span class="shrink-0 text-xs font-medium">{{ $task->status->label() }}</span>
+                            </div>
+                            <p class="truncate text-xs text-muted-foreground">{{ $task->category?->name ?? 'Sem categoria' }} · {{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</p>
+                            <p class="text-xs text-muted-foreground">Prazo: {{ $task->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</p>
+                        </article>
+                    @empty
+                        <p class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma tarefa encontrada.</p>
+                    @endforelse
                 </div>
                 @if ($tasks->hasPages())<div class="border-t border-border px-4 py-3">{{ $tasks->links() }}</div>@endif
             </section>
@@ -686,6 +724,11 @@
                 <i class="ph ph-files text-sm"></i>
                 <span class="text-xs font-medium">Total <span class="font-bold">{{ $summary['total'] }}</span></span>
             </button>
+            <button type="button" wire:click="applyQuickFilter('pending')"
+                class="flex h-full items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 transition-colors {{ $quickFilter === 'pending' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/60 hover:text-foreground' }}">
+                <div class="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
+                <span class="text-xs font-medium">Pendentes <span class="font-bold">{{ $pendingTasks }}</span></span>
+            </button>
             <button type="button" wire:click="applyQuickFilter('urgent')"
                 class="flex h-full items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 transition-colors {{ $quickFilter === 'urgent' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/60 hover:text-foreground' }}">
                 <div class="h-1.5 w-1.5 rounded-full bg-destructive"></div>
@@ -720,7 +763,7 @@
                 <button type="button"
                     x-on:click="viewMode = 'list'; localStorage.setItem('taskViewMode', 'list')"
                     aria-label="Visualização em lista"
-                    class="flex h-6 w-7 items-center justify-center rounded-sm transition-colors"
+                    class="hidden h-6 w-7 items-center justify-center rounded-sm transition-colors md:flex"
                     :class="viewMode === 'list' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
                     <i class="ph ph-list text-sm"></i>
                 </button>
@@ -820,6 +863,7 @@
                     <i class="ph ph-faders text-sm"></i>
                     {{ match($quickFilter) {
                         'total' => 'Total',
+                        'pending' => 'Pendentes',
                         'urgent' => 'Urgentes',
                         'overdue' => 'Vencidas',
                         'in_progress' => 'Em andamento',
@@ -1229,29 +1273,35 @@
                             Status
                         </label>
 
-                        <div class="inline-flex w-full rounded-md border border-border bg-muted p-0.5" role="group">
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Status da tarefa">
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::Pending->value }}')"
                                 x-bind:disabled="mode === 'create'"
-                                class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-sm px-2 text-[10px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">
-                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                                Pendente
+                                aria-pressed="{{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value ? 'true' : 'false' }}"
+                                class="flex h-10 items-center gap-2 rounded-md border px-3 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-55 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value ? 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300' : 'border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground' }}">
+                                <span class="h-2 w-1 shrink-0 rounded-sm bg-amber-500"></span>
+                                <span class="min-w-0 flex-1">Pendente</span>
+                                @if ($form->currentStatus === \App\Domain\Tasks\TaskStatus::Pending->value)<i class="ph-bold ph-check text-sm" aria-hidden="true"></i>@endif
                             </button>
 
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::InProgress->value }}')"
                                 x-bind:disabled="mode === 'create'"
-                                class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-sm px-2 text-[10px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">
-                                <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                Em andamento
+                                aria-pressed="{{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value ? 'true' : 'false' }}"
+                                class="flex h-10 items-center gap-2 rounded-md border px-3 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-55 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value ? 'border-blue-500/45 bg-blue-500/10 text-blue-700 dark:text-blue-300' : 'border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground' }}">
+                                <span class="h-2 w-1 shrink-0 rounded-sm bg-blue-500"></span>
+                                <span class="min-w-0 flex-1">Em andamento</span>
+                                @if ($form->currentStatus === \App\Domain\Tasks\TaskStatus::InProgress->value)<i class="ph-bold ph-check text-sm" aria-hidden="true"></i>@endif
                             </button>
 
                             <button type="button"
                                 wire:click="selectStatus('{{ \App\Domain\Tasks\TaskStatus::Completed->value }}')"
                                 x-bind:disabled="mode === 'create'"
-                                class="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-sm px-2 text-[10px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                Concluído
+                                aria-pressed="{{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value ? 'true' : 'false' }}"
+                                class="flex h-10 items-center gap-2 rounded-md border px-3 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-55 {{ $form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value ? 'border-emerald-500/45 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground' }}">
+                                <span class="h-2 w-1 shrink-0 rounded-sm bg-emerald-500"></span>
+                                <span class="min-w-0 flex-1">Concluído</span>
+                                @if ($form->currentStatus === \App\Domain\Tasks\TaskStatus::Completed->value)<i class="ph-bold ph-check text-sm" aria-hidden="true"></i>@endif
                             </button>
                         </div>
                     </div>

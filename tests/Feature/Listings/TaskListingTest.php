@@ -43,6 +43,26 @@ class TaskListingTest extends TestCase
         $this->assertCount(3, $listing->tasks->items());
     }
 
+    public function test_task_listing_searches_task_observations(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $matchingTask = Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'title' => 'Inspeção de rotina',
+            'observation' => 'Aguarda vistoria do fornecedor.',
+        ]);
+        Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'title' => 'Tarefa sem correspondência',
+            'observation' => 'Sem detalhes adicionais.',
+        ]);
+
+        $listing = app(ListTasks::class)->handle($team->id, 'fornecedor', [], 10);
+
+        $this->assertSame([$matchingTask->id], $listing->tasks->pluck('id')->all());
+    }
+
     public function test_task_listing_summary_counts_completed_records(): void
     {
         $team = Team::factory()->create();
@@ -198,6 +218,48 @@ class TaskListingTest extends TestCase
             ->assertSet('quickFilter', 'total')
             ->assertSee('Tarefa urgente')
             ->assertSee('Tarefa concluida');
+    }
+
+    public function test_pending_quick_filter_only_lists_pending_tasks(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+
+        $pending = Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        Task::factory()->forCategory($category)->create([
+            'team_id' => $team->id,
+            'status' => TaskStatus::InProgress,
+        ]);
+
+        $listing = app(ListTasks::class)->handle($team->id, '', ['quick_filter' => 'pending'], 10);
+
+        $this->assertSame([$pending->id], $listing->tasks->pluck('id')->all());
+    }
+
+    public function test_opening_indicators_resets_the_task_filters_to_their_defaults(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('search', 'Praça')
+            ->set('filterCategoryId', (string) $category->id)
+            ->set('filterAssigneeId', (string) $user->id)
+            ->set('filterStatus', TaskStatus::Completed->value)
+            ->set('filterUrgent', '1')
+            ->call('applyQuickFilter', 'urgent')
+            ->call('openIndicators')
+            ->assertSet('search', '')
+            ->assertSet('filterCategoryId', '')
+            ->assertSet('filterAssigneeId', '')
+            ->assertSet('filterStatus', '')
+            ->assertSet('filterUrgent', '')
+            ->assertSet('quickFilter', 'total');
     }
 
     public function test_changing_urgency_keeps_task_in_its_original_position(): void

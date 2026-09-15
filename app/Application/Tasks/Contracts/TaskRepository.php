@@ -22,7 +22,7 @@ interface TaskRepository
     public function delete(Task $task): void;
 
     /**
-     * @param  array{category_id?:int|null,assignee_id?:int|null,status?:string|null,urgent?:bool|null,quick_filter?:string|null}  $filters
+     * @param  array{category_id?:int|null,assignee_id?:int|null,status?:string|null,urgent?:bool|null,quick_filter?:'pending'|'urgent'|'in_progress'|'completed'|'overdue'|null}  $filters
      */
     public function listForTeam(int $teamId, string $search = '', array $filters = [], int $perPage = 15): TaskListResult;
 
