@@ -3,7 +3,24 @@
      x-data="{ 
         sidebarOpen: false,
         panelView: 'tasks',
-        indicatorChart: 'lines',
+        indicatorChart: 'pie',
+        setPanelView(view) {
+            if (!['tasks', 'indicators', 'reports'].includes(view)) {
+                return;
+            }
+
+            this.panelView = view;
+
+            const url = new URL(window.location.href);
+
+            if (view === 'tasks') {
+                url.searchParams.delete('view');
+            } else {
+                url.searchParams.set('view', view);
+            }
+
+            window.history.pushState({ panelView: view }, '', url);
+        },
         teamsOpen: true,
         systemSettingsOpen: false,
         filterOpen: false,
@@ -17,14 +34,20 @@
      }"
      x-init="
         const mobileView = window.matchMedia('(max-width: 767px)');
+        const restorePanelView = () => {
+            const view = new URLSearchParams(window.location.search).get('view');
+            panelView = ['indicators', 'reports'].includes(view) ? view : 'tasks';
+        };
         const enforceCardView = () => {
             if (mobileView.matches) {
                 viewMode = 'grid';
                 localStorage.setItem('taskViewMode', 'grid');
             }
         };
+        restorePanelView();
         enforceCardView();
         mobileView.addEventListener('change', enforceCardView);
+        window.addEventListener('popstate', restorePanelView);
         document.documentElement.classList.add('dark');
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -82,7 +105,7 @@
             <div>
                 <h3 class="mb-2 px-3 text-[10px] font-medium text-muted-foreground">Geral</h3>
                 <nav class="space-y-0.5">
-                    <button type="button" x-on:click="panelView = 'tasks'; sidebarOpen = false"
+                    <button type="button" x-on:click="setPanelView('tasks'); sidebarOpen = false"
                         class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                         :class="panelView === 'tasks' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-clipboard-text text-lg"></i>
@@ -91,14 +114,14 @@
 
                     <button type="button" data-testid="indicators-view-trigger"
                         wire:click="openIndicators"
-                        x-on:click="panelView = 'indicators'; sidebarOpen = false"
+                        x-on:click="setPanelView('indicators'); sidebarOpen = false"
                         class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                         :class="panelView === 'indicators' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-chart-pie-slice text-lg"></i>
                         Indicadores
                     </button>
 
-                    <button type="button" data-testid="reports-view-trigger" x-on:click="panelView = 'reports'; sidebarOpen = false"
+                    <button type="button" data-testid="reports-view-trigger" x-on:click="setPanelView('reports'); sidebarOpen = false"
                         class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                         :class="panelView === 'reports' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
                         <i class="ph-duotone ph-scroll text-lg"></i>
