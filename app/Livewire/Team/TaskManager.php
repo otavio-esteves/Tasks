@@ -63,19 +63,23 @@ class TaskManager extends Component
 
     public string $filterUrgent = '';
 
+    public string $indicatorStartDate = '';
+
+    public string $indicatorEndDate = '';
+
+    public string $indicatorGrouping = 'monthly';
+
     public string $reportAssigneeId = '';
 
-    public string $reportDueFrom = '';
+    public string $reportStartDate = '';
 
-    public string $reportDueTo = '';
+    public string $reportEndDate = '';
 
     public string $reportChartStyle = 'lines';
 
     public string $quickFilter = 'total';
 
     public string $newCategoryName = '';
-
-    public bool $showCategoryModal = false;
 
     public string $systemTab = 'teams';
 
@@ -93,6 +97,8 @@ class TaskManager extends Component
         $this->authorize('view', $team);
         $this->authorize('viewAny', [Task::class, $team]);
         $this->team = $team;
+        $this->indicatorStartDate = now()->startOfYear()->format('Y-m-d');
+        $this->indicatorEndDate = now()->endOfYear()->format('Y-m-d');
     }
 
     public function updatingSearch(): void
@@ -124,25 +130,10 @@ class TaskManager extends Component
         $this->resetPage();
     }
 
-    public function updated($property, $value): void
+    public function updatedIndicatorGrouping(): void
     {
-        if ($property === 'form.categoryId' && $value === 'new') {
-            $this->openCategoryModal();
-        }
-    }
-
-    public function openCategoryModal(): void
-    {
-        $this->authorize('create', Category::class);
-        $this->newCategoryName = '';
-        $this->showCategoryModal = true;
-    }
-
-    public function closeCategoryModal(): void
-    {
-        $this->showCategoryModal = false;
-        if ($this->form->categoryId === 'new') {
-            $this->form->categoryId = '';
+        if (! in_array($this->indicatorGrouping, ['daily', 'weekly', 'monthly', 'yearly'], true)) {
+            $this->indicatorGrouping = 'monthly';
         }
     }
 
@@ -164,13 +155,9 @@ class TaskManager extends Component
 
             $category = $saveCategory->handle(null, $data);
 
-            // Refresh categories list
             $this->team->load('categories');
-
-            // Select the new category
             $this->form->categoryId = $category->id;
             $this->newCategoryName = '';
-            $this->showCategoryModal = false;
         } catch (CategorySlugAlreadyExists $e) {
             $this->addError('newCategoryName', $e->getMessage());
         } catch (Throwable $e) {
@@ -623,6 +610,7 @@ class TaskManager extends Component
         return view('livewire.team.task-manager', [
             'tasks' => $listing->tasks,
             'summary' => $listing->summary,
+            'monthlyTasks' => $listing->monthlyTasks,
             'categories' => $this->team->categories,
             'statusOptions' => TaskStatus::cases(),
             'teams' => $listTeamOptions->handle(),
@@ -631,7 +619,7 @@ class TaskManager extends Component
     }
 
     /**
-     * @return array{category_id?:int,assignee_id?:int,status?:string,urgent?:bool,quick_filter?:string}
+     * @return array{category_id?:int,assignee_id?:int,status?:string,urgent?:bool,quick_filter?:string,indicator_start_date:string,indicator_end_date:string,indicator_grouping:string}
      */
     private function listFilters(): array
     {
@@ -657,6 +645,10 @@ class TaskManager extends Component
             $filters['quick_filter'] = (string) $this->quickFilter;
         }
 
+        $filters['indicator_start_date'] = $this->indicatorStartDate;
+        $filters['indicator_end_date'] = $this->indicatorEndDate;
+        $filters['indicator_grouping'] = $this->indicatorGrouping;
+
         return $filters;
     }
 
@@ -677,6 +669,8 @@ class TaskManager extends Component
         $task = $getTask->handle($this->team->id, (int) $this->form->taskId);
         $this->authorize('update', $task);
 
+        /** @var Carbon|null $startDate */
+        $startDate = $task->start_date;
         /** @var Carbon|null $dueDate */
         $dueDate = $task->due_date;
 
@@ -684,6 +678,7 @@ class TaskManager extends Component
             'title' => $task->title,
             'location' => $task->location ?? '',
             'category_id' => $task->category_id,
+            'start_date' => $startDate?->format('Y-m-d') ?? '',
             'due_date' => $dueDate?->format('Y-m-d') ?? '',
             'is_urgent' => (bool) $task->is_urgent,
             'observation' => $task->observation ?? '',

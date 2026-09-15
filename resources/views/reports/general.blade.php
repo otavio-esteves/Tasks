@@ -66,7 +66,7 @@
         <div class="filters">
             <strong>Filtros:</strong>
             Responsável: {{ $assignee?->name ?? 'Todos' }} ·
-            Período: {{ $dueFrom ? \Carbon\Carbon::parse($dueFrom)->format('d/m/Y') : 'início' }} até {{ $dueTo ? \Carbon\Carbon::parse($dueTo)->format('d/m/Y') : 'hoje e próximas' }}
+            Período: {{ $startDate ? \Carbon\Carbon::parse($startDate)->format('d/m/Y') : 'início' }} até {{ $endDate ? \Carbon\Carbon::parse($endDate)->format('d/m/Y') : 'sem limite' }}
         </div>
 
         @php
@@ -119,12 +119,12 @@
 
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Código</th><th>Tarefa</th><th>Categoria</th><th>Responsáveis</th><th>Status</th><th>Prioridade</th><th>Prazo</th></tr></thead>
+                <thead><tr><th>Código</th><th>Tarefa</th><th>Categoria</th><th>Responsáveis</th><th>Status</th><th>Prioridade</th><th>Data inicial</th><th>Data final</th></tr></thead>
                 <tbody>
                     @forelse ($report->tasks as $task)
-                        <tr><td>{{ $task->code }}</td><td><strong>{{ $task->title }}</strong><br><span class="muted">{{ $task->location ?: 'Sem localização' }}</span></td><td>{{ $task->category?->name ?? '—' }}</td><td>{{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</td><td class="status">{{ $task->status->label() }}</td><td>{{ $task->is_urgent ? 'Urgente' : 'Normal' }}</td><td>{{ $task->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</td></tr>
+                        <tr><td>{{ $task->code }}</td><td><strong>{{ $task->title }}</strong><br><span class="muted">{{ $task->location ?: 'Sem localização' }}</span></td><td>{{ $task->category?->name ?? '—' }}</td><td>{{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</td><td class="status">{{ $task->status->label() }}</td><td>{{ $task->is_urgent ? 'Urgente' : 'Normal' }}</td><td>{{ $task->start_date?->format('d/m/Y') ?? 'Sem data inicial' }}</td><td>{{ $task->due_date?->format('d/m/Y') ?? 'Sem data final' }}</td></tr>
                     @empty
-                        <tr><td colspan="7" style="padding: 28px; text-align: center; color: #71717a;">Nenhuma tarefa encontrada para os filtros informados.</td></tr>
+                        <tr><td colspan="8" style="padding: 28px; text-align: center; color: #71717a;">Nenhuma tarefa encontrada para os filtros informados.</td></tr>
                     @endforelse
                 </tbody>
             </table>

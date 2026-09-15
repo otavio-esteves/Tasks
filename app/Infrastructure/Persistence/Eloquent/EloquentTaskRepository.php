@@ -78,10 +78,16 @@ class EloquentTaskRepository implements TaskRepository
                 $logs[] = "Localização alterada de '{$old}' para '{$new}'.";
                 $metadata['location'] = ['from' => $old, 'to' => $new];
             }
+            if (array_key_exists('start_date', $changes)) {
+                $old = isset($original['start_date']) ? Carbon::parse($original['start_date'])->format('d/m/Y') : 'Não definida';
+                $new = isset($changes['start_date']) ? Carbon::parse($changes['start_date'])->format('d/m/Y') : 'Não definida';
+                $logs[] = "Data inicial alterada de {$old} para {$new}.";
+                $metadata['start_date'] = ['from' => $old, 'to' => $new];
+            }
             if (array_key_exists('due_date', $changes)) {
                 $old = isset($original['due_date']) ? Carbon::parse($original['due_date'])->format('d/m/Y') : 'Não definido';
                 $new = isset($changes['due_date']) ? Carbon::parse($changes['due_date'])->format('d/m/Y') : 'Não definido';
-                $logs[] = "Prazo alterado de {$old} para {$new}.";
+                $logs[] = "Data final alterada de {$old} para {$new}.";
                 $metadata['due_date'] = ['from' => $old, 'to' => $new];
             }
             if (array_key_exists('is_urgent', $changes)) {
@@ -245,6 +251,9 @@ class EloquentTaskRepository implements TaskRepository
         $status = $filters['status'] ?? null;
         $urgent = $filters['urgent'] ?? null;
         $quickFilter = $filters['quick_filter'] ?? null;
+        $indicatorStartDate = $filters['indicator_start_date'] ?? null;
+        $indicatorEndDate = $filters['indicator_end_date'] ?? null;
+        $indicatorGrouping = $filters['indicator_grouping'] ?? 'monthly';
         $today = Carbon::today()->toDateString();
 
         $baseQuery = Task::query()
@@ -289,21 +298,31 @@ class EloquentTaskRepository implements TaskRepository
             'completed' => (clone $baseQuery)->where('status', TaskStatus::Completed->value)->toBase()->count(),
         ];
 
-        return new TaskListResult($tasks, $summary);
+        return new TaskListResult(
+            $tasks,
+            $summary,
+            $this->periodTaskCounts($baseQuery, $indicatorStartDate, $indicatorEndDate, $indicatorGrouping),
+        );
     }
 
     public function reportForTeam(int $teamId, array $filters = []): TaskReportResult
     {
         $assigneeId = isset($filters['assignee_id']) ? (int) $filters['assignee_id'] : null;
-        $dueFrom = $filters['due_from'] ?? null;
-        $dueTo = $filters['due_to'] ?? null;
+        $startDate = $filters['start_date'] ?? null;
+        $endDate = $filters['end_date'] ?? null;
 
         $tasks = Task::query()
             ->with(['category', 'assignees'])
             ->forTeam($teamId)
             ->when($assigneeId, fn ($query) => $query->whereHas('assignees', fn ($assignees) => $assignees->whereKey($assigneeId)))
-            ->when($dueFrom, fn ($query) => $query->whereDate('due_date', '>=', $dueFrom))
-            ->when($dueTo, fn ($query) => $query->whereDate('due_date', '<=', $dueTo))
+            ->when($startDate, fn ($query) => $query->where(function ($query) use ($startDate): void {
+                $query->whereDate('due_date', '>=', $startDate)->orWhereNull('due_date');
+            }))
+            ->when($endDate, fn ($query) => $query->where(function ($query) use ($endDate): void {
+                $query->whereDate('start_date', '<=', $endDate)->orWhereNull('start_date');
+            }))
+            ->orderByRaw('start_date IS NULL')
+            ->orderBy('start_date')
             ->orderByRaw('due_date IS NULL')
             ->orderBy('due_date')
             ->orderByDesc('created_at')
@@ -321,5 +340,66 @@ class EloquentTaskRepository implements TaskRepository
                 && $task->due_date->isBefore($today)
                 && $task->status !== TaskStatus::Completed)->count(),
         ]);
+    }
+
+    /** @return list<array{label:string,value:int}> */
+    private function periodTaskCounts($query, ?string $startDate, ?string $endDate, string $grouping): array
+    {
+        $grouping = in_array($grouping, ['daily', 'weekly', 'monthly', 'yearly'], true) ? $grouping : 'monthly';
+        $start = filled($startDate) ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfYear();
+        $end = filled($endDate) ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfYear();
+
+        if ($end->isBefore($start)) {
+            [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
+        }
+
+        $counts = (clone $query)
+            ->whereNotNull('start_date')
+            ->whereDate('start_date', '>=', $start)
+            ->whereDate('start_date', '<=', $end)
+            ->pluck('start_date')
+            ->map(fn ($date): string => $this->periodKey(Carbon::parse($date), $grouping))
+            ->countBy();
+
+        $cursor = match ($grouping) {
+            'daily' => $start->copy()->startOfDay(),
+            'weekly' => $start->copy()->startOfWeek(),
+            'monthly' => $start->copy()->startOfMonth(),
+            'yearly' => $start->copy()->startOfYear(),
+        };
+        $periods = [];
+
+        while ($cursor->isBefore($end) || $cursor->isSameDay($end)) {
+            $key = $this->periodKey($cursor, $grouping);
+            $periods[] = [
+                'label' => match ($grouping) {
+                    'daily' => $cursor->format('d/m'),
+                    'weekly' => 'Sem. '.$cursor->isoWeek,
+                    'monthly' => $cursor->translatedFormat('M/y'),
+                    'yearly' => $cursor->format('Y'),
+                },
+                'value' => (int) ($counts[$key] ?? 0),
+            ];
+
+            $cursor = match ($grouping) {
+                'daily' => $cursor->addDay(),
+                'weekly' => $cursor->addWeek(),
+                'monthly' => $cursor->addMonth(),
+                'yearly' => $cursor->addYear(),
+            };
+        }
+
+        return $periods;
+    }
+
+    private function periodKey(Carbon $date, string $grouping): string
+    {
+        return match ($grouping) {
+            'daily' => $date->format('Y-m-d'),
+            'weekly' => $date->format('o-\\WW'),
+            'monthly' => $date->format('Y-m'),
+            'yearly' => $date->format('Y'),
+            default => $date->format('Y-m'),
+        };
     }
 }

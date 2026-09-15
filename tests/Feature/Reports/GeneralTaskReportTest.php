@@ -22,18 +22,20 @@ class GeneralTaskReportTest extends TestCase
         $included = Task::factory()->forTeam($team)->urgent()->create([
             'title' => 'Tarefa incluída',
             'status' => TaskStatus::Pending,
+            'start_date' => '2026-09-10',
             'due_date' => '2026-09-15',
         ]);
         $included->assignees()->attach($assignee);
         Task::factory()->forTeam($team)->create([
             'title' => 'Tarefa fora do período',
+            'start_date' => '2026-10-01',
             'due_date' => '2026-10-15',
         ])->assignees()->attach($assignee);
 
         $report = app(GetGeneralTaskReport::class)->handle($team->id, [
             'assignee_id' => $assignee->id,
-            'due_from' => '2026-09-01',
-            'due_to' => '2026-09-30',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
         ]);
 
         $this->assertSame(1, $report->summary['total']);
@@ -44,8 +46,8 @@ class GeneralTaskReportTest extends TestCase
             ->get(route('teams.reports.general', [
                 'team' => $team,
                 'assignee_id' => $assignee->id,
-                'due_from' => '2026-09-01',
-                'due_to' => '2026-09-30',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-30',
                 'chart_style' => 'pie',
             ]))
             ->assertOk()
@@ -63,6 +65,28 @@ class GeneralTaskReportTest extends TestCase
                 ->assertOk()
                 ->assertSee("estilo {$chartStyle}");
         }
+    }
+
+    public function test_report_includes_tasks_that_overlap_the_selected_period(): void
+    {
+        $team = Team::factory()->create();
+        $spanningTask = Task::factory()->forTeam($team)->create([
+            'title' => 'Tarefa em andamento no período',
+            'start_date' => '2026-08-20',
+            'due_date' => '2026-10-10',
+        ]);
+        Task::factory()->forTeam($team)->create([
+            'title' => 'Tarefa encerrada antes do período',
+            'start_date' => '2026-08-01',
+            'due_date' => '2026-08-31',
+        ]);
+
+        $report = app(GetGeneralTaskReport::class)->handle($team->id, [
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+        ]);
+
+        $this->assertSame([$spanningTask->id], $report->tasks->pluck('id')->all());
     }
 
     public function test_user_cannot_print_report_from_another_team(): void

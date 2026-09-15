@@ -22,12 +22,12 @@ interface TaskRepository
     public function delete(Task $task): void;
 
     /**
-     * @param  array{category_id?:int|null,assignee_id?:int|null,status?:string|null,urgent?:bool|null,quick_filter?:'pending'|'urgent'|'in_progress'|'completed'|'overdue'|null}  $filters
+     * @param  array{category_id?:int|null,assignee_id?:int|null,status?:string|null,urgent?:bool|null,quick_filter?:'pending'|'urgent'|'in_progress'|'completed'|'overdue'|null,indicator_start_date?:string|null,indicator_end_date?:string|null,indicator_grouping?:'daily'|'weekly'|'monthly'|'yearly'|null}  $filters
      */
     public function listForTeam(int $teamId, string $search = '', array $filters = [], int $perPage = 15): TaskListResult;
 
     /**
-     * @param  array{assignee_id?:int|null,due_from?:string|null,due_to?:string|null}  $filters
+     * @param  array{assignee_id?:int|null,start_date?:string|null,end_date?:string|null}  $filters
      */
     public function reportForTeam(int $teamId, array $filters = []): TaskReportResult;
 }

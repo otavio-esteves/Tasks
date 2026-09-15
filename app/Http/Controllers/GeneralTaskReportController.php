@@ -21,8 +21,8 @@ class GeneralTaskReportController extends Controller
 
         $validated = $request->validate([
             'assignee_id' => ['nullable', 'integer', 'exists:users,id'],
-            'due_from' => ['nullable', 'date_format:Y-m-d'],
-            'due_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:due_from'],
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'chart_style' => ['nullable', 'in:lines,columns,pie'],
         ]);
 
@@ -37,12 +37,12 @@ class GeneralTaskReportController extends Controller
             'team' => $team,
             'report' => $getGeneralTaskReport->handle($team->id, [
                 'assignee_id' => $assigneeId,
-                'due_from' => $validated['due_from'] ?? null,
-                'due_to' => $validated['due_to'] ?? null,
+                'start_date' => $validated['start_date'] ?? null,
+                'end_date' => $validated['end_date'] ?? null,
             ]),
             'assignee' => $assigneeId === null ? null : $users->firstWhere('id', $assigneeId),
-            'dueFrom' => $validated['due_from'] ?? null,
-            'dueTo' => $validated['due_to'] ?? null,
+            'startDate' => $validated['start_date'] ?? null,
+            'endDate' => $validated['end_date'] ?? null,
             'chartStyle' => $validated['chart_style'] ?? 'lines',
         ]);
     }

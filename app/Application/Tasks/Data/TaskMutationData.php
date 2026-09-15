@@ -21,6 +21,7 @@ abstract readonly class TaskMutationData
         public string $title,
         public ?string $location,
         public int $categoryId,
+        public ?string $startDate,
         public ?string $dueDate,
         public bool $isUrgent,
         public ?string $observation,
@@ -34,6 +35,7 @@ abstract readonly class TaskMutationData
      *     title:string,
      *     location:string|null,
      *     category_id:int|string,
+     *     start_date?:string|null,
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null,
@@ -47,6 +49,7 @@ abstract readonly class TaskMutationData
             title: trim($data['title']),
             location: self::normalizeNullableString($data['location'] ?? null),
             categoryId: (int) $data['category_id'],
+            startDate: self::normalizeNullableString($data['start_date'] ?? null),
             dueDate: self::normalizeNullableString($data['due_date'] ?? null),
             isUrgent: (bool) $data['is_urgent'],
             observation: self::normalizeNullableString($data['observation'] ?? null),
@@ -57,6 +60,8 @@ abstract readonly class TaskMutationData
 
     public static function fromTask(Task $task): static
     {
+        /** @var Carbon|null $startDate */
+        $startDate = $task->start_date;
         /** @var Carbon|null $dueDate */
         $dueDate = $task->due_date;
 
@@ -64,6 +69,7 @@ abstract readonly class TaskMutationData
             title: $task->title,
             location: self::normalizeNullableString($task->location),
             categoryId: (int) $task->category_id,
+            startDate: $startDate?->format('Y-m-d'),
             dueDate: $dueDate?->format('Y-m-d'),
             isUrgent: (bool) $task->is_urgent,
             observation: self::normalizeNullableString($task->observation),
@@ -86,6 +92,7 @@ abstract readonly class TaskMutationData
      *     title:string,
      *     location:string|null,
      *     category_id:int,
+     *     start_date:string|null,
      *     due_date:string|null,
      *     is_urgent:bool,
      *     observation:string|null
@@ -97,6 +104,7 @@ abstract readonly class TaskMutationData
             'title' => $this->title,
             'location' => $this->location,
             'category_id' => $this->categoryId,
+            'start_date' => $this->startDate,
             'due_date' => $this->dueDate,
             'is_urgent' => $this->isUrgent,
             'observation' => $this->observation,
@@ -130,6 +138,7 @@ abstract readonly class TaskMutationData
      *     title:string,
      *     location:string,
      *     categoryId:int,
+     *     startDate:string,
      *     dueDate:string,
      *     isUrgent:bool,
      *     observation:string,
@@ -144,6 +153,7 @@ abstract readonly class TaskMutationData
             'title' => $this->title,
             'location' => $this->location ?? '',
             'categoryId' => $this->categoryId,
+            'startDate' => $this->startDate ?? '',
             'dueDate' => $this->dueDate ?? '',
             'isUrgent' => $this->isUrgent,
             'observation' => $this->observation ?? '',

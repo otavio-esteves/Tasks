@@ -70,7 +70,7 @@ class TaskLivewireTest extends TestCase
         $team = Team::factory()->create();
         $admin = User::factory()->admin()->create();
 
-        Livewire::actingAs($admin)
+        $component = Livewire::actingAs($admin)
             ->test(TaskManager::class, ['team' => $team])
             ->assertSet('systemTab', 'teams')
             ->assertSee('Nova equipe')
@@ -112,6 +112,15 @@ class TaskLivewireTest extends TestCase
             ->assertSee('Imprimir PDF')
             ->assertSee('Estilo do gráfico')
             ->assertSee('aria-label="Abrir calendário da data inicial"', false)
+            ->assertSee('Tarefas por período')
+            ->assertSee('Gráfico de colunas com a quantidade de tarefas por período')
+            ->assertSee('id="indicator-start-date"', false)
+            ->assertSee('id="indicator-end-date"', false)
+            ->assertSee('Agrupar por')
+            ->assertSee('Diário')
+            ->assertSee('Semanal')
+            ->assertSee('Mensal')
+            ->assertSee('Anual')
             ->assertSee('aria-label="Estilo do gráfico do relatório"', false)
             ->assertSee('ph-chart-pie-slice', false)
             ->assertSee('rounded-full px-2.5', false)
@@ -257,6 +266,8 @@ class TaskLivewireTest extends TestCase
             ->set('form.title', 'Nova Tarefa Teste')
             ->set('form.location', 'Rua de Teste')
             ->set('form.categoryId', $category->id)
+            ->set('form.startDate', '2026-09-10')
+            ->set('form.dueDate', '2026-09-20')
             ->set('form.isUrgent', true)
             ->set('form.assigneeIds', [$assignee->id])
             ->call('save')
@@ -267,6 +278,8 @@ class TaskLivewireTest extends TestCase
             'title' => 'Nova Tarefa Teste',
             'location' => 'Rua de Teste',
             'category_id' => $category->id,
+            'start_date' => '2026-09-10',
+            'due_date' => '2026-09-20',
             'is_urgent' => true,
             'team_id' => $team->id,
         ]);
@@ -491,6 +504,22 @@ class TaskLivewireTest extends TestCase
             ->assertHasErrors(['form.dueDate' => 'date_format']);
     }
 
+    public function test_final_date_cannot_precede_start_date(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('form.title', 'Tarefa com período inválido')
+            ->set('form.categoryId', $category->id)
+            ->set('form.startDate', '2026-09-20')
+            ->set('form.dueDate', '2026-09-10')
+            ->call('save')
+            ->assertHasErrors(['form.dueDate' => 'after_or_equal']);
+    }
+
     public function test_missing_category_is_rejected_before_use_case(): void
     {
         $team = Team::factory()->create();
@@ -521,6 +550,29 @@ class TaskLivewireTest extends TestCase
             ->assertHasErrors(['newCategoryName' => 'max']);
 
         $this->assertDatabaseCount('categories', 0);
+    }
+
+    public function test_admin_can_create_a_category_directly_in_the_task_form_when_none_exist(): void
+    {
+        $team = Team::factory()->create();
+        $admin = User::factory()->admin()->forTeam($team)->create();
+
+        $component = Livewire::actingAs($admin)
+            ->test(TaskManager::class, ['team' => $team])
+            ->assertSee('Nova categoria')
+            ->assertSee('Adicionar')
+            ->assertDontSee('Modal de Criacao de Categoria')
+            ->set('newCategoryName', 'Manutenção predial')
+            ->call('createNewCategory');
+
+        $this->assertDatabaseHas('categories', [
+            'team_id' => $team->id,
+            'name' => 'Manutenção predial',
+        ]);
+        $this->assertSame(
+            Category::query()->where('team_id', $team->id)->where('name', 'Manutenção predial')->value('id'),
+            $component->get('form.categoryId'),
+        );
     }
 
     public function test_team_user_can_select_categories_but_cannot_create_them(): void

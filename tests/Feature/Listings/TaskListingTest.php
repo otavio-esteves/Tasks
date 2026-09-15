@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -260,6 +261,37 @@ class TaskListingTest extends TestCase
             ->assertSet('filterStatus', '')
             ->assertSet('filterUrgent', '')
             ->assertSet('quickFilter', 'total');
+    }
+
+    public function test_task_listing_provides_monthly_counts_for_started_tasks(): void
+    {
+        $team = Team::factory()->create();
+        $category = Category::factory()->for($team)->create();
+        $year = 2025;
+
+        Task::factory()->forCategory($category)->count(2)->create(['start_date' => "{$year}-03-01"]);
+        Task::factory()->forCategory($category)->create(['start_date' => "{$year}-11-01"]);
+        Task::factory()->forCategory($category)->create(['start_date' => '2024-03-01']);
+
+        $listing = app(ListTasks::class)->handle($team->id, filters: [
+            'indicator_start_date' => "{$year}-01-01",
+            'indicator_end_date' => "{$year}-12-31",
+            'indicator_grouping' => 'monthly',
+        ]);
+        $counts = collect($listing->monthlyTasks)->pluck('value', 'label');
+
+        $this->assertCount(12, $listing->monthlyTasks);
+        $this->assertSame(2, $counts[Carbon::create($year, 3, 1)->translatedFormat('M/y')]);
+        $this->assertSame(1, $counts[Carbon::create($year, 11, 1)->translatedFormat('M/y')]);
+
+        $daily = app(ListTasks::class)->handle($team->id, filters: [
+            'indicator_start_date' => "{$year}-03-01",
+            'indicator_end_date' => "{$year}-03-03",
+            'indicator_grouping' => 'daily',
+        ]);
+
+        $this->assertCount(3, $daily->monthlyTasks);
+        $this->assertSame(2, $daily->monthlyTasks[0]['value']);
     }
 
     public function test_changing_urgency_keeps_task_in_its_original_position(): void

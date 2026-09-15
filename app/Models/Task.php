@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 /**
  * @property TaskStatus $status
  * @property int $team_id
+ * @property Carbon|null $start_date
  * @property Carbon|null $due_date
  */
 class Task extends Model
@@ -28,6 +29,7 @@ class Task extends Model
         'title',
         'location',
         'observation',
+        'start_date',
         'due_date',
         'is_urgent',
         'team_id',
@@ -59,6 +61,7 @@ class Task extends Model
     protected function casts(): array
     {
         return [
+            'start_date' => 'date',
             'due_date' => 'date',
             'is_urgent' => 'boolean',
             'status' => TaskStatus::class,

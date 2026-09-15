@@ -18,12 +18,14 @@ class TaskFactory extends Factory
     public function definition(): array
     {
         $team = Team::factory();
+        $startDate = fake()->date();
 
         return [
             'title' => fake()->sentence(3),
             'location' => fake()->address(),
             'observation' => fake()->sentence(),
-            'due_date' => fake()->date(),
+            'start_date' => $startDate,
+            'due_date' => fake()->dateTimeBetween($startDate, '+1 year')->format('Y-m-d'),
             'is_urgent' => fake()->boolean(),
             'status' => fake()->randomElement(TaskStatus::cases()),
             'team_id' => $team,

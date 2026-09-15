@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Database;
 
+use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -25,5 +26,17 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($team->id, $user->team_id);
         $this->assertNotNull($user->email_verified_at);
         $this->assertTrue(Hash::check('password', $user->password));
+
+        $demoTasks = Task::query()
+            ->where('team_id', $team->id)
+            ->where('observation', 'Tarefa de demonstração para os indicadores.')
+            ->get();
+
+        $this->assertCount(56, $demoTasks);
+        $this->assertTrue($demoTasks->every(
+            fn (Task $task): bool => $task->start_date !== null
+                && $task->due_date !== null
+                && $task->due_date->greaterThanOrEqualTo($task->start_date),
+        ));
     }
 }

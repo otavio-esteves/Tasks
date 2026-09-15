@@ -21,6 +21,9 @@ class TaskForm extends Form
     public string|int $categoryId = '';
 
     #[Validate('nullable|date_format:Y-m-d')]
+    public string $startDate = '';
+
+    #[Validate('nullable|date_format:Y-m-d|after_or_equal:startDate')]
     public string $dueDate = '';
 
     #[Validate('boolean')]
@@ -63,6 +66,7 @@ class TaskForm extends Form
         $this->title = $data['title'];
         $this->location = $data['location'];
         $this->categoryId = $data['categoryId'];
+        $this->startDate = $data['startDate'];
         $this->dueDate = $data['dueDate'];
         $this->isUrgent = $data['isUrgent'];
         $this->assigneeIds = $data['assigneeIds'];
@@ -112,6 +116,7 @@ class TaskForm extends Form
             'title' => $this->title,
             'location' => $this->location,
             'category_id' => $this->categoryId,
+            'start_date' => $this->startDate,
             'due_date' => $this->dueDate,
             'is_urgent' => $this->isUrgent,
             'assignee_ids' => $this->assigneeIds,

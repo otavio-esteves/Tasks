@@ -10,7 +10,7 @@ class GetGeneralTaskReport
     public function __construct(private readonly TaskRepository $tasks) {}
 
     /**
-     * @param  array{assignee_id?:int|null,due_from?:string|null,due_to?:string|null}  $filters
+     * @param  array{assignee_id?:int|null,start_date?:string|null,end_date?:string|null}  $filters
      */
     public function handle(int $teamId, array $filters = []): TaskReportResult
     {

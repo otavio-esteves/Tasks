@@ -33,13 +33,9 @@
         }
      "
      x-on:open-task-modal.window="modalOpen = true; modalView = $event.detail.view || 'details'; mode = $event.detail.mode"
-     x-on:task-saved.window="if (!$wire.showCategoryModal) modalOpen = false"
-     x-on:task-modal-closed.window="if (!$wire.showCategoryModal) modalOpen = false"
+     x-on:task-saved.window="modalOpen = false"
+     x-on:task-modal-closed.window="modalOpen = false"
      x-on:keydown.escape.window="
-        if ($wire.showCategoryModal) {
-            $wire.closeCategoryModal();
-            return;
-        }
         if (reportConfigOpen) {
             reportConfigOpen = false;
         } else if (modalOpen) {
@@ -513,13 +509,13 @@
         x-transition:enter-end="opacity-100 translate-y-0"
         class="flex-1 overflow-y-auto bg-muted/40 p-3 sm:p-6 custom-scrollbar">
         <div class="mx-auto max-w-6xl">
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div class="mb-6 flex flex-col gap-4">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Visão da equipe</p>
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight">Panorama operacional</h2>
                     <p class="mt-1 text-sm text-muted-foreground">Distribuição atual das tarefas de {{ $team->name }}.</p>
                 </div>
-                <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
+                <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     <div class="min-w-40">
                         <label for="indicator-user-filter" class="mb-1 block text-[11px] font-medium text-muted-foreground">Responsável</label>
                         <x-system-select id="indicator-user-filter" model="filterAssigneeId" :value="$filterAssigneeId" :options="$users->pluck('name', 'id')->all()" placeholder="Todos" icon="user" />
@@ -535,6 +531,22 @@
                     <div class="min-w-40">
                         <label class="mb-1 block text-[11px] font-medium text-muted-foreground">Urgência</label>
                         <x-system-select model="filterUrgent" :value="$filterUrgent" :options="['1' => 'Somente urgentes', '0' => 'Somente não urgentes']" placeholder="Todas" icon="warning-circle" />
+                    </div>
+                    <div>
+                        <label for="indicator-start-date" class="mb-1 block text-[11px] font-medium text-muted-foreground">Data inicial</label>
+                        <div class="relative" x-data>
+                            <i class="ph ph-calendar-blank pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
+                            <input id="indicator-start-date" x-ref="indicatorStartDate" wire:model.live="indicatorStartDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-9 pr-10 text-sm shadow-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                            <button type="button" x-on:click="$refs.indicatorStartDate.showPicker ? $refs.indicatorStartDate.showPicker() : $refs.indicatorStartDate.focus()" aria-label="Abrir calendário da data inicial dos indicadores" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"><i class="ph ph-caret-down text-xs" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="indicator-end-date" class="mb-1 block text-[11px] font-medium text-muted-foreground">Data final</label>
+                        <div class="relative" x-data>
+                            <i class="ph ph-calendar-blank pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
+                            <input id="indicator-end-date" x-ref="indicatorEndDate" wire:model.live="indicatorEndDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-9 pr-10 text-sm shadow-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                            <button type="button" x-on:click="$refs.indicatorEndDate.showPicker ? $refs.indicatorEndDate.showPicker() : $refs.indicatorEndDate.focus()" aria-label="Abrir calendário da data final dos indicadores" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"><i class="ph ph-caret-down text-xs" aria-hidden="true"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -611,6 +623,78 @@
                 </div>
             </section>
 
+            @php
+                $monthlyTaskMaximum = max(1, ...array_column($monthlyTasks, 'value'));
+            @endphp
+            <section class="mt-4 rounded-shadcn border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-5" aria-labelledby="monthly-task-chart-title">
+                <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div><h3 id="monthly-task-chart-title" class="text-base font-semibold tracking-tight">Tarefas por período</h3><p class="mt-1 text-xs text-muted-foreground">Quantidade de tarefas iniciadas no intervalo selecionado.</p></div>
+                    <div class="w-full sm:w-44"><label class="mb-1 block text-[11px] font-medium text-muted-foreground">Agrupar por</label><x-system-select model="indicatorGrouping" :value="$indicatorGrouping" :options="['daily' => 'Diário', 'weekly' => 'Semanal', 'monthly' => 'Mensal', 'yearly' => 'Anual']" icon="calendar" /></div>
+                </div>
+                <div wire:key="period-chart-navigation-{{ $indicatorGrouping }}-{{ $indicatorStartDate }}-{{ $indicatorEndDate }}" x-data="{
+                    thumbWidth: 100,
+                    thumbLeft: 0,
+                    dragging: false,
+                    dragStartX: 0,
+                    dragStartScroll: 0,
+                    updateThumb() {
+                        const scroller = this.$refs.periodScroller;
+                        if (scroller.clientWidth === 0) {
+                            this.thumbWidth = 100;
+                            this.thumbLeft = 0;
+                            return;
+                        }
+                        const scrollableWidth = scroller.scrollWidth - scroller.clientWidth;
+                        const hasOverflow = scrollableWidth > 1;
+                        this.thumbWidth = hasOverflow ? Math.max(12, (scroller.clientWidth / scroller.scrollWidth) * 100) : 100;
+                        this.thumbLeft = hasOverflow ? (scroller.scrollLeft / scrollableWidth) * (100 - this.thumbWidth) : 0;
+                    },
+                    dragThumb(event) {
+                        if (!this.dragging) return;
+                        const scroller = this.$refs.periodScroller;
+                        const trackWidth = this.$refs.periodTrack.clientWidth;
+                        const scrollableWidth = scroller.scrollWidth - scroller.clientWidth;
+                        if (trackWidth === 0 || scrollableWidth === 0) return;
+                        scroller.scrollLeft = this.dragStartScroll + ((event.clientX - this.dragStartX) / trackWidth) * scrollableWidth;
+                    },
+                    scrollColumns(direction) {
+                        this.$refs.periodScroller.scrollBy({
+                            left: this.$refs.periodScroller.clientWidth * direction * 0.75,
+                            behavior: 'smooth',
+                        });
+                    }
+                }"
+                x-init="$nextTick(() => {
+                    updateThumb();
+                    requestAnimationFrame(() => updateThumb());
+                    setTimeout(() => updateThumb(), 50);
+                    setTimeout(() => updateThumb(), 250);
+                    new ResizeObserver(() => updateThumb()).observe($refs.periodScroller);
+                    new MutationObserver(() => requestAnimationFrame(() => updateThumb())).observe($el.closest('main'), { attributes: true, attributeFilter: ['style', 'class'] });
+                })"
+                x-effect="if (panelView === 'indicators') { $nextTick(() => { requestAnimationFrame(() => updateThumb()); setTimeout(() => updateThumb(), 50); }) }"
+                x-on:pointermove.window="dragThumb($event)"
+                x-on:pointerup.window="dragging = false"
+                x-on:pointercancel.window="dragging = false">
+                    <div class="relative">
+                        <div x-ref="periodScroller" x-on:scroll="updateThumb()" class="period-chart-scroller grid grid-flow-col auto-cols-[minmax(4rem,1fr)] gap-3 overflow-x-auto" role="img" aria-label="Gráfico de colunas com a quantidade de tarefas por período">
+                            @foreach ($monthlyTasks as $month)
+                                <div class="flex min-w-0 flex-col items-center">
+                                    <span class="mb-2 text-xs font-semibold tabular-nums">{{ $month['value'] }}</span>
+                                    <div class="flex h-36 w-full max-w-16 items-end rounded-md bg-muted p-1"><div class="w-full rounded-sm bg-primary transition-[height] duration-500" style="height: {{ ($month['value'] / $monthlyTaskMaximum) * 100 }}%"></div></div>
+                                    <span class="mt-2 text-center text-xs font-medium text-muted-foreground">{{ $month['label'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" x-show="thumbWidth < 100 && thumbLeft > 0" x-cloak x-on:click="scrollColumns(-1)" aria-label="Ver colunas anteriores" class="absolute left-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-sm transition-colors hover:bg-foreground/85"><i class="ph ph-caret-left text-sm" aria-hidden="true"></i></button>
+                        <button type="button" x-show="thumbWidth < 100 && thumbLeft + thumbWidth < 99.5" x-cloak x-on:click="scrollColumns(1)" aria-label="Ver próximas colunas" class="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-sm transition-colors hover:bg-foreground/85"><i class="ph ph-caret-right text-sm" aria-hidden="true"></i></button>
+                    </div>
+                    <div x-ref="periodTrack" x-show="thumbWidth < 100" x-cloak class="relative mt-2 h-2">
+                        <button type="button" aria-label="Deslizar gráfico horizontalmente" x-on:pointerdown.prevent="dragging = true; dragStartX = $event.clientX; dragStartScroll = $refs.periodScroller.scrollLeft" class="absolute top-0 h-2 cursor-grab rounded-sm bg-muted-foreground/45 active:cursor-grabbing hover:bg-muted-foreground/65" x-bind:style="'width: ' + thumbWidth + '%; left: ' + thumbLeft + '%'"></button>
+                    </div>
+                </div>
+            </section>
+
             <section class="mt-4 overflow-hidden rounded-shadcn border border-border bg-card shadow-sm" aria-labelledby="indicator-task-list-title">
                 <div class="border-b border-border px-4 py-3">
                     <h3 id="indicator-task-list-title" class="text-sm font-semibold">Tarefas dos indicadores</h3>
@@ -619,11 +703,11 @@
                 <div class="hidden overflow-x-auto sm:block">
                     <table class="w-full min-w-[42rem] text-left text-sm">
                         <thead class="border-b border-border bg-muted/50 text-xs text-muted-foreground">
-                            <tr><th class="h-10 px-4 font-medium">Código</th><th class="h-10 px-4 font-medium">Tarefa</th><th class="h-10 px-4 font-medium">Responsáveis</th><th class="h-10 px-4 font-medium">Status</th><th class="h-10 px-4 font-medium">Prazo</th></tr>
+                            <tr><th class="h-10 px-4 font-medium">Código</th><th class="h-10 px-4 font-medium">Tarefa</th><th class="h-10 px-4 font-medium">Responsáveis</th><th class="h-10 px-4 font-medium">Status</th><th class="h-10 px-4 font-medium">Data final</th></tr>
                         </thead>
                         <tbody class="divide-y divide-border">
                             @forelse ($tasks as $task)
-                                <tr class="hover:bg-muted/30"><td class="px-4 py-3 text-xs font-medium">{{ $task->code }}</td><td class="px-4 py-3"><span class="block font-medium">{{ $task->title }}</span><span class="block text-xs text-muted-foreground">{{ $task->category?->name }}</span></td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</td><td class="px-4 py-3 text-xs">{{ $task->status->label() }}</td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</td></tr>
+                                <tr class="hover:bg-muted/30"><td class="px-4 py-3 text-xs font-medium">{{ $task->code }}</td><td class="px-4 py-3"><span class="block font-medium">{{ $task->title }}</span><span class="block text-xs text-muted-foreground">{{ $task->category?->name }}</span></td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</td><td class="px-4 py-3 text-xs">{{ $task->status->label() }}</td><td class="px-4 py-3 text-xs text-muted-foreground">{{ $task->due_date?->format('d/m/Y') ?? 'Sem data final' }}</td></tr>
                             @empty
                                 <tr><td colspan="5" class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma tarefa encontrada.</td></tr>
                             @endforelse
@@ -638,7 +722,7 @@
                                 <span class="shrink-0 text-xs font-medium">{{ $task->status->label() }}</span>
                             </div>
                             <p class="truncate text-xs text-muted-foreground">{{ $task->category?->name ?? 'Sem categoria' }} · {{ $task->assignees->pluck('name')->join(', ') ?: 'Sem responsável' }}</p>
-                            <p class="text-xs text-muted-foreground">Prazo: {{ $task->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</p>
+                            <p class="text-xs text-muted-foreground">Data final: {{ $task->due_date?->format('d/m/Y') ?? 'Sem data final' }}</p>
                         </article>
                     @empty
                         <p class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma tarefa encontrada.</p>
@@ -680,16 +764,16 @@
                     <label class="mb-1.5 block text-xs font-medium">Data inicial</label>
                     <div class="relative" x-data>
                         <i class="ph-bold ph-calendar-blank pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-foreground" aria-hidden="true"></i>
-                        <input x-ref="reportDueFrom" wire:model.live="reportDueFrom" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
-                        <button type="button" x-on:click="$refs.reportDueFrom.showPicker ? $refs.reportDueFrom.showPicker() : $refs.reportDueFrom.focus()" aria-label="Abrir calendário da data inicial" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
+                        <input x-ref="reportStartDate" wire:model.live="reportStartDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                        <button type="button" x-on:click="$refs.reportStartDate.showPicker ? $refs.reportStartDate.showPicker() : $refs.reportStartDate.focus()" aria-label="Abrir calendário da data inicial" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
                     </div>
                 </div>
                 <div>
                     <label class="mb-1.5 block text-xs font-medium">Data final</label>
                     <div class="relative" x-data>
                         <i class="ph-bold ph-calendar-blank pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-foreground" aria-hidden="true"></i>
-                        <input x-ref="reportDueTo" wire:model.live="reportDueTo" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
-                        <button type="button" x-on:click="$refs.reportDueTo.showPicker ? $refs.reportDueTo.showPicker() : $refs.reportDueTo.focus()" aria-label="Abrir calendário da data final" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
+                        <input x-ref="reportEndDate" wire:model.live="reportEndDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-10 pr-9 text-sm text-foreground shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                        <button type="button" x-on:click="$refs.reportEndDate.showPicker ? $refs.reportEndDate.showPicker() : $refs.reportEndDate.focus()" aria-label="Abrir calendário da data final" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-foreground hover:bg-accent"><i class="ph-bold ph-caret-down text-xs" aria-hidden="true"></i></button>
                     </div>
                 </div>
                 <div class="sm:col-span-2">
@@ -701,13 +785,13 @@
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col items-stretch gap-3 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"><span class="text-xs text-muted-foreground">As cores serão preservadas na impressão.</span><a target="_blank" rel="noopener" href="{{ route('teams.reports.general', ['team' => $team, 'assignee_id' => $reportAssigneeId ?: null, 'due_from' => $reportDueFrom ?: null, 'due_to' => $reportDueTo ?: null, 'chart_style' => $reportChartStyle]) }}" class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"><i class="ph ph-printer" aria-hidden="true"></i>Imprimir PDF</a></div>
+            <div class="flex flex-col items-stretch gap-3 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"><span class="text-xs text-muted-foreground">As cores serão preservadas na impressão.</span><a target="_blank" rel="noopener" href="{{ route('teams.reports.general', ['team' => $team, 'assignee_id' => $reportAssigneeId ?: null, 'start_date' => $reportStartDate ?: null, 'end_date' => $reportEndDate ?: null, 'chart_style' => $reportChartStyle]) }}" class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"><i class="ph ph-printer" aria-hidden="true"></i>Imprimir PDF</a></div>
         </div>
     </div>
 
     <header x-show="panelView === 'tasks'"
-        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-2 border-b border-border bg-background px-3 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-3 md:py-4">
-        <div class="flex min-w-0 items-center gap-2 w-full md:w-auto">
+        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-2 border-b border-border bg-background px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3 sm:px-6 sm:py-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div class="flex min-w-0 items-center gap-2 w-full sm:w-auto">
             <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="group flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <i class="ph ph-list text-lg"></i>
             </button>
@@ -718,7 +802,7 @@
             </div>
         </div>
 
-        <div class="flex h-8 w-full max-w-full items-center justify-self-center overflow-x-auto rounded-md border border-border bg-muted p-0.5 md:w-auto">
+        <div class="order-3 col-span-full flex h-8 w-full max-w-full items-center justify-self-center overflow-x-auto rounded-md border border-border bg-muted p-0.5 xl:order-none xl:col-auto xl:w-auto">
             <button type="button" wire:click="applyQuickFilter('total')"
                 class="flex h-full items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 transition-colors {{ $quickFilter === 'total' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/60 hover:text-foreground' }}">
                 <i class="ph ph-files text-sm"></i>
@@ -751,7 +835,7 @@
             </button>
         </div>
 
-        <div class="flex w-full min-w-0 items-center gap-2 md:w-auto md:justify-self-end">
+        <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:justify-self-end xl:justify-self-end">
             <div class="flex h-8 items-center rounded-md border border-input bg-background p-0.5" role="group" aria-label="Modo de visualização">
                 <button type="button"
                     x-on:click="viewMode = 'grid'; localStorage.setItem('taskViewMode', 'grid')"
@@ -763,7 +847,7 @@
                 <button type="button"
                     x-on:click="viewMode = 'list'; localStorage.setItem('taskViewMode', 'list')"
                     aria-label="Visualização em lista"
-                    class="hidden h-6 w-7 items-center justify-center rounded-sm transition-colors md:flex"
+                    class="hidden h-6 w-7 items-center justify-center rounded-sm transition-colors sm:flex"
                     :class="viewMode === 'list' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
                     <i class="ph ph-list text-sm"></i>
                 </button>
@@ -818,7 +902,7 @@
                     </div>
                 </div>
             </div>
-            <div class="relative h-8 min-w-0 flex-1 md:w-56">
+            <div class="relative h-8 min-w-0 flex-1 sm:w-56">
                 <i class="ph ph-magnifying-glass pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i>
                 <input wire:model.live.debounce.300ms="search" type="text" placeholder="Buscar..." 
                     class="h-full w-full rounded-md border border-input bg-muted/50 pl-8 pr-3 text-xs shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
@@ -915,7 +999,7 @@
             <span>Tarefa</span>
             <span>Local</span>
             <span>Categoria</span>
-            <span>Prazo</span>
+            <span>Data final</span>
             <span>Prioridade</span>
             <span>Situação</span>
         </div>
@@ -994,7 +1078,7 @@
 
                         <div class="mt-3 flex items-end justify-between gap-2 border-t border-border pt-3">
                             <span class="text-[11px] text-muted-foreground">
-                                {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : 'Sem prazo' }}
+                                {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : 'Sem data final' }}
                             </span>
                             <div class="flex min-w-0 justify-end gap-1.5">
                                 @if($showUrgentBadge)
@@ -1074,7 +1158,7 @@
                                 @error('inlineEditValue') <span class="mt-1 block text-[10px] text-destructive">{{ $message }}</span> @enderror
                             @else
                                 <span class="text-xs text-muted-foreground">
-                                    {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : 'Sem prazo' }}
+                                    {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : 'Sem data final' }}
                                 </span>
                             @endif
                         </div>
@@ -1124,7 +1208,7 @@
          x-transition:enter="ease-out duration-300"
          x-transition:enter-start="opacity-0 scale-95"
          x-transition:enter-end="opacity-100 scale-100"
-         x-on:click.away="if (!$wire.showCategoryModal) $wire.closeModal()">            
+         x-on:click.away="$wire.closeModal()">
             <div class="flex shrink-0 flex-col items-stretch gap-2 border-b border-border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
                 <div class="flex min-w-0 items-center gap-2">
                     <h2 class="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg"
@@ -1207,7 +1291,7 @@
                         @error('form.location') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div>
                             <label class="mb-1.5 block text-xs font-medium text-foreground">Categoria</label>
                             <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
@@ -1226,20 +1310,34 @@
                                         </button>
                                     @endforeach
                                     @can('create', \App\Models\Category::class)
-                                        <button type="button" wire:click="openCategoryModal" x-on:click="open = false" class="mt-1 flex w-full items-center gap-2 border-t border-border px-2.5 py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground">
-                                            <i class="ph ph-plus" aria-hidden="true"></i>Criar nova categoria
-                                        </button>
+                                        <div class="mt-1 border-t border-border p-2" x-on:click.stop>
+                                            <label class="sr-only" for="new-category-name">Nova categoria</label>
+                                            <div class="flex items-center gap-2">
+                                                <input id="new-category-name" wire:model="newCategoryName" wire:keydown.enter.prevent="createNewCategory" type="text" placeholder="Nova categoria" class="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring">
+                                                <button type="button" wire:click="createNewCategory" aria-label="Adicionar categoria" class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                                            </div>
+                                            @error('newCategoryName') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
+                                        </div>
                                     @endcan
                                 </div>
                             </div>
                             @error('form.categoryId') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-xs font-medium text-foreground">Prazo</label>
+                            <label class="mb-1.5 block text-xs font-medium text-foreground">Data inicial</label>
+                            <div class="relative" x-data>
+                                <i class="ph ph-calendar-blank pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
+                                <input x-ref="taskStartDate" wire:model="form.startDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-9 pr-10 text-sm shadow-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
+                                <button type="button" x-on:click="$refs.taskStartDate.showPicker ? $refs.taskStartDate.showPicker() : $refs.taskStartDate.focus()" aria-label="Abrir calendário da data inicial" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"><i class="ph ph-caret-down text-xs" aria-hidden="true"></i></button>
+                            </div>
+                            @error('form.startDate') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium text-foreground">Data final</label>
                             <div class="relative" x-data>
                                 <i class="ph ph-calendar-blank pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true"></i>
                                 <input x-ref="taskDueDate" wire:model="form.dueDate" type="date" class="h-9 w-full appearance-none rounded-md border border-input bg-muted/50 pl-9 pr-10 text-sm shadow-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0">
-                                <button type="button" x-on:click="$refs.taskDueDate.showPicker ? $refs.taskDueDate.showPicker() : $refs.taskDueDate.focus()" aria-label="Abrir calendário" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                                <button type="button" x-on:click="$refs.taskDueDate.showPicker ? $refs.taskDueDate.showPicker() : $refs.taskDueDate.focus()" aria-label="Abrir calendário da data final" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
                                     <i class="ph ph-caret-down text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
@@ -1577,46 +1675,6 @@
             </form>
         </div>
     </div>
-    
-    {{-- Modal de Criacao de Categoria --}}
-    @can('create', \App\Models\Category::class)
-    @if($showCategoryModal)
-        <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
-            <div class="w-full max-w-sm overflow-hidden rounded-shadcn border border-border bg-background text-foreground shadow-lg">
-                <div class="flex items-center justify-between border-b border-border px-6 py-4">
-                    <h3 class="text-sm font-semibold tracking-tight">Nova categoria</h3>
-                    <button type="button" wire:click="closeCategoryModal" aria-label="Fechar criação de categoria" class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-                        <i class="ph ph-x text-xl"></i>
-                    </button>
-                </div>
-                
-                <div class="p-6 space-y-4">
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-medium text-foreground">Nome da categoria</label>
-                        <input wire:model="newCategoryName" type="text" placeholder="Ex: Manutencao Eletrica"
-                            wire:keydown.enter.prevent="createNewCategory"
-                            class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-ring">
-                        @error('newCategoryName')
-                            <span class="text-[10px] font-bold text-red-500 uppercase tracking-tight">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <div class="flex gap-3 pt-2">
-                        <button type="button" wire:click="closeCategoryModal"
-                            class="h-9 flex-1 rounded-md border border-input bg-background px-4 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
-                            Cancelar
-                        </button>
-                        <button type="button" wire:click="createNewCategory"
-                            class="h-9 flex-1 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
-                            Criar Categoria
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-    @endcan
-
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1629,6 +1687,8 @@
         }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #cbd5e1; }
         .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #475569; }
+        .period-chart-scroller { -ms-overflow-style: none; scrollbar-width: none; }
+        .period-chart-scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
         [x-cloak] { display: none !important; }
     </style>
 </div>
