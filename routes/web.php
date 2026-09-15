@@ -2,6 +2,7 @@
 
 use App\Application\Auth\ResolveUserHomeRoute;
 use App\Http\Controllers\GeneralTaskReportController;
+use App\Http\Controllers\TaskAttachmentDownloadController;
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\TeamManager;
 use App\Livewire\Team\TaskManager;
@@ -45,6 +46,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipes/{team}/relatorios/geral', GeneralTaskReportController::class)
         ->can('view', 'team')
         ->name('teams.reports.general');
+
+    Route::get('/equipes/{team}/tarefas/{task}/anexos/{attachment}', TaskAttachmentDownloadController::class)
+        ->can('view', 'team')
+        ->name('teams.tasks.attachments.download');
 
     // Keep existing bookmarks usable during the transition to Tasks.
     Route::get('/admin/secretarias', fn () => redirect()->route('admin.teams'))

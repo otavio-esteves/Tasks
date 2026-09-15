@@ -6,12 +6,15 @@ use App\Application\Categories\Data\CreateCategoryData;
 use App\Application\Categories\SaveCategory;
 use App\Application\Tasks\ChangeTaskStatus;
 use App\Application\Tasks\CreateTask;
+use App\Application\Tasks\Data\CreateTaskAttachmentData;
 use App\Application\Tasks\Data\CreateTaskData;
 use App\Application\Tasks\Data\TaskListResult;
 use App\Application\Tasks\Data\UpdateTaskData;
 use App\Application\Tasks\DeleteTask;
+use App\Application\Tasks\DeleteTaskAttachment;
 use App\Application\Tasks\GetTask;
 use App\Application\Tasks\Queries\ListTasks;
+use App\Application\Tasks\StoreTaskAttachment;
 use App\Application\Tasks\UpdateTask;
 use App\Application\Tasks\Validators\EnsureAssigneesBelongToTeam;
 use App\Application\Teams\Queries\ListTeamOptions;
@@ -31,15 +34,18 @@ use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
 
 class TaskManager extends Component
 {
-    use AuthorizesRequests, InteractsWithFriendlyExceptions, WithPagination;
+    use AuthorizesRequests, InteractsWithFriendlyExceptions, WithFileUploads, WithPagination;
 
     private const INLINE_EDITABLE_FIELDS = ['title', 'location', 'category_id', 'due_date'];
 
@@ -78,6 +84,9 @@ class TaskManager extends Component
     public string $inlineEditingField = '';
 
     public mixed $inlineEditValue = null;
+
+    /** @var list<TemporaryUploadedFile> */
+    public array $pendingAttachments = [];
 
     public function mount(Team $team): void
     {
@@ -496,6 +505,86 @@ class TaskManager extends Component
     public function resetForm(): void
     {
         $this->form->reset();
+        $this->reset('pendingAttachments');
+    }
+
+    public function uploadAttachments(StoreTaskAttachment $storeTaskAttachment): void
+    {
+        if (! $this->form->taskId) {
+            return;
+        }
+
+        $this->validate([
+            'pendingAttachments' => ['required', 'array', 'max:5'],
+            'pendingAttachments.*' => ['file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg,webp,txt'],
+        ]);
+
+        try {
+            $task = app(GetTask::class)->handle($this->team->id, (int) $this->form->taskId);
+            $this->authorize('update', $task);
+
+            foreach ($this->pendingAttachments as $uploadedFile) {
+                $path = $uploadedFile->store("task-attachments/{$task->id}", 'local');
+
+                if (! is_string($path)) {
+                    throw new \RuntimeException('Não foi possível armazenar o arquivo.');
+                }
+
+                try {
+                    $attachment = $storeTaskAttachment->handle(
+                        $this->team->id,
+                        auth()->id(),
+                        $task->id,
+                        new CreateTaskAttachmentData(
+                            path: $path,
+                            originalName: $uploadedFile->getClientOriginalName(),
+                            mimeType: $uploadedFile->getMimeType() ?: 'application/octet-stream',
+                            size: (int) $uploadedFile->getSize(),
+                        ),
+                    );
+                } catch (Throwable $e) {
+                    Storage::disk('local')->delete($path);
+
+                    throw $e;
+                }
+
+                $this->form->attachments[] = [
+                    'id' => $attachment->id,
+                    'name' => $attachment->original_name,
+                    'mimeType' => $attachment->mime_type,
+                    'size' => $attachment->size,
+                ];
+            }
+
+            $this->reset('pendingAttachments');
+        } catch (TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Não foi possível enviar os arquivos agora. Tente novamente.', 'error');
+        }
+    }
+
+    public function removeAttachment(int $attachmentId, DeleteTaskAttachment $deleteTaskAttachment): void
+    {
+        if (! $this->form->taskId) {
+            return;
+        }
+
+        try {
+            $task = app(GetTask::class)->handle($this->team->id, (int) $this->form->taskId);
+            $this->authorize('update', $task);
+
+            $attachment = $deleteTaskAttachment->handle($this->team->id, $task->id, $attachmentId);
+            Storage::disk('local')->delete($attachment->path);
+            $this->form->attachments = array_values(array_filter(
+                $this->form->attachments,
+                fn (array $attachment): bool => $attachment['id'] !== $attachmentId,
+            ));
+        } catch (TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Não foi possível remover o arquivo agora. Tente novamente.', 'error');
+        }
     }
 
     public function clearFilters(): void

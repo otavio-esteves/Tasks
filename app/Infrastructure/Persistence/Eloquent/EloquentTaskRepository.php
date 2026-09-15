@@ -37,14 +37,14 @@ class EloquentTaskRepository implements TaskRepository
                 'user_id' => $userId,
             ]);
 
-            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user', 'attachments']);
         });
     }
 
     public function findByIdForTeam(int $teamId, int $taskId): ?Task
     {
         return Task::query()
-            ->with(['category', 'assignees', 'checklistItems', 'histories.user'])
+            ->with(['category', 'assignees', 'checklistItems', 'histories.user', 'attachments'])
             ->forTeam($teamId)
             ->whereKey($taskId)
             ->first();
@@ -122,7 +122,7 @@ class EloquentTaskRepository implements TaskRepository
                 ]);
             }
 
-            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user', 'attachments']);
         });
     }
 
@@ -227,7 +227,7 @@ class EloquentTaskRepository implements TaskRepository
                 ],
             ]);
 
-            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user']);
+            return $task->fresh(['category', 'assignees', 'checklistItems', 'histories.user', 'attachments']);
         });
     }
 

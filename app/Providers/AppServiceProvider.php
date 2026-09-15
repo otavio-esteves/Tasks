@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Application\Categories\Contracts\CategoryRepository;
 use App\Application\System\Contracts\SystemSettingRepository;
+use App\Application\Tasks\Contracts\TaskAttachmentRepository;
 use App\Application\Tasks\Contracts\TaskRepository;
 use App\Application\Teams\Contracts\TeamRepository;
 use App\Application\Users\Contracts\UserRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentCategoryRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentSystemSettingRepository;
+use App\Infrastructure\Persistence\Eloquent\EloquentTaskAttachmentRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentTaskRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentTeamRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentUserRepository;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CategoryRepository::class, EloquentCategoryRepository::class);
         $this->app->bind(TeamRepository::class, EloquentTeamRepository::class);
         $this->app->bind(TaskRepository::class, EloquentTaskRepository::class);
+        $this->app->bind(TaskAttachmentRepository::class, EloquentTaskAttachmentRepository::class);
         $this->app->bind(UserRepository::class, EloquentUserRepository::class);
         $this->app->bind(SystemSettingRepository::class, EloquentSystemSettingRepository::class);
     }

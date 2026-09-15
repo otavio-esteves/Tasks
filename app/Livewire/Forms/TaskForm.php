@@ -52,6 +52,9 @@ class TaskForm extends Form
 
     public array $historyItems = [];
 
+    /** @var list<array{id:int,name:string,mimeType:string,size:int}> */
+    public array $attachments = [];
+
     public function setTask(Task $task): void
     {
         $data = UpdateTaskData::fromTask($task)->toFormState();
@@ -67,6 +70,12 @@ class TaskForm extends Form
         $this->currentStatus = $task->status->value;
         $this->checklistItems = $data['checklistItems'];
         $this->historyItems = $data['historyItems'];
+        $this->attachments = $task->attachments->map(fn ($attachment): array => [
+            'id' => $attachment->id,
+            'name' => $attachment->original_name,
+            'mimeType' => $attachment->mime_type,
+            'size' => $attachment->size,
+        ])->all();
 
         $this->originalChecklistItems = $this->normalizeChecklistItems($this->checklistItems);
     }

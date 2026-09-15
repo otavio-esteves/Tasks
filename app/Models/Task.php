@@ -97,6 +97,14 @@ class Task extends Model
         return $this->hasMany(TaskHistory::class)->orderBy('created_at', 'desc')->orderBy('id', 'desc');
     }
 
+    /**
+     * @return HasMany<TaskAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TaskAttachment::class)->orderByDesc('created_at')->orderByDesc('id');
+    }
+
     public function scopeForTeam(Builder $query, int $teamId): Builder
     {
         return $query->where('team_id', $teamId);

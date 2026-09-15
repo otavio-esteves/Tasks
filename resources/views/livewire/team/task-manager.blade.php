@@ -1152,6 +1152,12 @@
                             </div>
                         </div>
                     </div>
+                    <button type="button" x-on:click="modalView = 'attachments'" aria-label="Exibir arquivos da tarefa"
+                        :class="modalView === 'attachments' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'"
+                        class="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
+                        title="Arquivos da tarefa">
+                        <i class="ph ph-files text-xl"></i>
+                    </button>
                     <button type="button" x-on:click="modalView = 'details'" aria-label="Exibir detalhes da tarefa"
                         :class="modalView === 'details' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'"
                         class="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
@@ -1391,6 +1397,45 @@
                     @error('form.newChecklistItem') <span class="mt-1 block text-xs text-red-500">{{ $message }}</span> @enderror
                 </aside>
                 </div>
+
+                <section class="flex h-full flex-col overflow-hidden p-4 sm:p-6" x-show="modalView === 'attachments'">
+                    <div class="mb-4 flex shrink-0 items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold tracking-tight text-foreground">Arquivos</h3>
+                            <p class="mt-0.5 text-xs text-muted-foreground">Anexe documentos e imagens relacionados a esta tarefa.</p>
+                        </div>
+                        <span class="text-[11px] font-medium text-muted-foreground">{{ count($form->attachments) }} {{ count($form->attachments) === 1 ? 'arquivo' : 'arquivos' }}</span>
+                    </div>
+
+                    @if ($form->taskId)
+                        <div class="mb-4 rounded-md border border-dashed border-border bg-muted/30 p-3">
+                            <label for="task-attachments" class="block text-xs font-medium text-foreground">Selecionar arquivos</label>
+                            <p class="mt-1 text-[11px] text-muted-foreground">Até 5 arquivos por envio, com no máximo 10 MB cada. PDF, documentos, planilhas, imagens ou TXT.</p>
+                            <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <input id="task-attachments" type="file" wire:model="pendingAttachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt" class="block w-full text-xs text-muted-foreground file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-background file:px-3 file:text-xs file:font-medium file:text-foreground hover:file:bg-accent">
+                                <button type="button" wire:click="uploadAttachments" wire:loading.attr="disabled" wire:target="pendingAttachments,uploadAttachments" class="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"><i class="ph ph-upload-simple text-sm" aria-hidden="true"></i>Enviar</button>
+                            </div>
+                            <div wire:loading wire:target="pendingAttachments,uploadAttachments" class="mt-2 text-xs text-muted-foreground">Preparando arquivos…</div>
+                            @error('pendingAttachments') <p class="mt-2 text-xs text-destructive">{{ $message }}</p> @enderror
+                            @error('pendingAttachments.*') <p class="mt-2 text-xs text-destructive">{{ $message }}</p> @enderror
+                        </div>
+                    @else
+                        <div class="mb-4 rounded-md border border-dashed border-border bg-muted/30 p-4 text-xs text-muted-foreground">Crie a tarefa antes de adicionar arquivos.</div>
+                    @endif
+
+                    <ul class="min-h-0 flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+                        @forelse ($form->attachments as $attachment)
+                            <li wire:key="task-attachment-{{ $attachment['id'] }}" class="flex items-center gap-3 rounded-md border border-border bg-card p-3">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"><i class="ph ph-file text-lg" aria-hidden="true"></i></span>
+                                <a href="{{ route('teams.tasks.attachments.download', ['team' => $team, 'task' => $form->taskId, 'attachment' => $attachment['id']]) }}" class="min-w-0 flex-1 truncate text-xs font-medium text-foreground hover:underline">{{ $attachment['name'] }}</a>
+                                <span class="hidden shrink-0 text-[10px] text-muted-foreground sm:inline">{{ number_format($attachment['size'] / 1024, 1, ',', '.') }} KB</span>
+                                <button type="button" wire:click="removeAttachment({{ $attachment['id'] }})" wire:confirm="Remover este arquivo?" aria-label="Remover {{ $attachment['name'] }}" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"><i class="ph ph-trash text-base" aria-hidden="true"></i></button>
+                            </li>
+                        @empty
+                            <li class="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/20 px-6 py-10 text-center"><i class="ph ph-files mb-2 text-3xl text-muted-foreground" aria-hidden="true"></i><p class="text-xs font-medium text-foreground">Nenhum arquivo anexado.</p></li>
+                        @endforelse
+                    </ul>
+                </section>
 
                 <div class="flex h-full flex-col overflow-hidden p-4 sm:p-6" x-show="modalView === 'history'">
                     <div class="flex items-center justify-between gap-3 mb-2 shrink-0">
