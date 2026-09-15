@@ -99,6 +99,9 @@ jobs:
       - name: Run Static Analysis
         run: composer analyze
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build production Docker image
         uses: docker/build-push-action@v6
         with:
