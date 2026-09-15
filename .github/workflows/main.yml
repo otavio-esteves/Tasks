@@ -98,3 +98,12 @@ jobs:
 
       - name: Run Static Analysis
         run: composer analyze
+
+      - name: Build production Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: tasks:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
