@@ -8,7 +8,7 @@
 
     <section class="overflow-hidden rounded-shadcn border border-border bg-card shadow-sm">
         <div class="flex flex-col items-stretch gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <div><h3 class="text-sm font-semibold">Cargos dos usuários</h3><p class="mt-1 text-xs text-muted-foreground">Defina quem administra o sistema. Pelo menos um administrador deve permanecer ativo.</p></div>
+            <div><h3 class="text-sm font-semibold">Usuários e equipes</h3><p class="mt-1 text-xs text-muted-foreground">Gerencie as equipes e o cargo de cada usuário. Pelo menos um administrador deve permanecer ativo.</p></div>
             <button type="button" wire:click="openCreate" class="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"><i class="ph ph-plus" aria-hidden="true"></i>Novo usuário</button>
         </div>
         <div class="divide-y divide-border">
@@ -16,16 +16,60 @@
                 <div wire:key="system-user-{{ $user->id }}" class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="min-w-0">
                         <p class="truncate text-sm font-medium">{{ $user->name }}</p>
-                        <p class="truncate text-xs text-muted-foreground">{{ $user->email }} · {{ $user->team?->name ?? 'Sem equipe' }}</p>
+                        <p class="truncate text-xs text-muted-foreground">{{ $user->email }} · {{ collect([$user->team?->name])->filter()->merge($user->additionalTeams->pluck('name'))->join(', ') ?: 'Sem equipe' }}</p>
                     </div>
-                    <div class="flex h-8 w-full shrink-0 items-center rounded-md border border-input bg-muted p-0.5 sm:w-auto" role="group" aria-label="Cargo de {{ $user->name }}">
-                        <button type="button" wire:click="setRole({{ $user->id }}, 'common')" class="h-6 flex-1 rounded-sm px-3 text-xs font-medium sm:flex-none {{ ! $user->is_admin ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">Comum</button>
-                        <button type="button" wire:click="setRole({{ $user->id }}, 'admin')" class="h-6 flex-1 rounded-sm px-3 text-xs font-medium sm:flex-none {{ $user->is_admin ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">Administrador</button>
+                    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                        <button type="button" wire:click="openTeamEdit({{ $user->id }})"
+                            class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <i class="ph ph-users-three text-sm" aria-hidden="true"></i>Gerenciar equipes
+                        </button>
+                        <div class="flex h-8 w-full shrink-0 items-center rounded-md border border-input bg-muted p-0.5 sm:w-auto" role="group" aria-label="Cargo de {{ $user->name }}">
+                            <button type="button" wire:click="setRole({{ $user->id }}, 'common')" class="h-6 flex-1 rounded-sm px-3 text-xs font-medium sm:flex-none {{ ! $user->is_admin ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">Comum</button>
+                            <button type="button" wire:click="setRole({{ $user->id }}, 'admin')" class="h-6 flex-1 rounded-sm px-3 text-xs font-medium sm:flex-none {{ $user->is_admin ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground' }}">Administrador</button>
+                        </div>
                     </div>
                 </div>
             @endforeach
         </div>
     </section>
+
+    @if ($isTeamEditOpen)
+        <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="edit-user-team-title">
+            <div class="w-full max-w-md rounded-shadcn border border-border bg-background shadow-lg">
+                <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                    <div class="min-w-0">
+                        <h3 id="edit-user-team-title" class="text-base font-semibold">Equipes do usuário</h3>
+                        <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ $editingUserName }}</p>
+                    </div>
+                    <button type="button" wire:click="closeTeamEdit" class="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Fechar"><i class="ph ph-x text-lg" aria-hidden="true"></i></button>
+                </div>
+                <form wire:submit="saveTeams">
+                    <div class="space-y-2 px-4 py-4 sm:px-5">
+                        <fieldset>
+                            <legend class="mb-1.5 text-xs font-medium">Equipes</legend>
+                            <div class="max-h-52 space-y-1 overflow-y-auto rounded-md border border-border bg-muted/20 p-2 custom-scrollbar">
+                                @forelse ($teams as $teamOption)
+                                    <label class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                                        <input type="checkbox" wire:model="editTeamIds" value="{{ $teamOption->id }}" class="system-checkbox">
+                                        <span>{{ $teamOption->name }}</span>
+                                    </label>
+                                @empty
+                                    <p class="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma equipe disponível.</p>
+                                @endforelse
+                            </div>
+                        </fieldset>
+                        <p class="text-xs text-muted-foreground">{{ $editingUserIsAdministrator ? 'Administradores podem ficar sem equipe. ' : 'Selecione pelo menos uma equipe. ' }}Ao remover uma equipe, as atribuições às tarefas dela serão removidas.</p>
+                        @error('editTeamIds')<p class="text-xs text-destructive" role="alert">{{ $message }}</p>@enderror
+                        @error('editTeamIds.*')<p class="text-xs text-destructive" role="alert">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:px-5">
+                        <button type="button" wire:click="closeTeamEdit" class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm hover:bg-accent">Cancelar</button>
+                        <button type="submit" class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">Salvar equipes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     @if ($isCreateOpen)
         <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
@@ -42,7 +86,7 @@
                             <div><label class="mb-1.5 block text-xs font-medium">Senha inicial</label><input wire:model="password" type="password" class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring">@error('password')<p class="mt-1 text-xs text-destructive">{{ $message }}</p>@enderror</div>
                             <div><label class="mb-1.5 block text-xs font-medium">Confirmar senha</label><input wire:model="passwordConfirmation" type="password" class="h-9 w-full rounded-md border border-input bg-muted/50 px-3 text-sm shadow-sm outline-none focus:bg-background focus:ring-2 focus:ring-ring"></div>
                         </div>
-                        <div><label class="mb-1.5 block text-xs font-medium">Equipe</label><x-system-select model="teamId" :value="$teamId" :options="$teams->pluck('name', 'id')->all()" placeholder="Selecione uma equipe..." icon="users-three" />@error('teamId')<p class="mt-1 text-xs text-destructive">{{ $message }}</p>@enderror</div>
+                        <div><label class="mb-1.5 block text-xs font-medium">Equipe inicial</label><x-system-select model="teamId" :value="$teamId" :options="$teams->pluck('name', 'id')->all()" placeholder="Selecione uma equipe..." icon="users-three" /><p class="mt-1 text-xs text-muted-foreground">Outras equipes podem ser adicionadas após criar o usuário.</p>@error('teamId')<p class="mt-1 text-xs text-destructive">{{ $message }}</p>@enderror</div>
                         <label class="flex cursor-pointer items-center justify-between rounded-md border border-border bg-muted/30 p-3"><span><span class="block text-sm font-medium">Administrador</span><span class="block text-xs text-muted-foreground">Acesso às configurações gerais do sistema.</span></span><input wire:model.live="isAdministrator" type="checkbox" class="system-checkbox"></label>
                     </div>
                     <div class="flex justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:px-5"><button type="button" wire:click="closeCreate" class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm hover:bg-accent">Cancelar</button><button type="submit" class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">Criar usuário</button></div>

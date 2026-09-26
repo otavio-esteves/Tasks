@@ -287,7 +287,7 @@
                                 {{ match($systemTab) {
                                     'teams' => 'Gerencie as equipes do sistema.',
                                     'categories' => 'Gerencie as categorias disponíveis por equipe.',
-                                    'users' => 'Gerencie os cargos e privilégios dos usuários.',
+                                    'users' => 'Gerencie os vínculos com equipes e os privilégios dos usuários.',
                                     'access' => 'Defina se o sistema exige identificação para acesso.',
                                 } }}
                             </p>

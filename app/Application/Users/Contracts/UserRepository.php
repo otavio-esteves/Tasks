@@ -29,4 +29,7 @@ interface UserRepository
     public function countAdministrators(): int;
 
     public function setAdministrator(User $user, bool $isAdministrator): User;
+
+    /** @param list<int> $teamIds */
+    public function setTeams(User $user, array $teamIds, int $actorId): User;
 }

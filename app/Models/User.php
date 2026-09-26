@@ -63,6 +63,12 @@ class User extends Authenticatable
         return $this->belongsTo(Team::class);
     }
 
+    /** @return BelongsToMany<Team, $this> */
+    public function additionalTeams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class)->withTimestamps();
+    }
+
     /** @return BelongsToMany<Task, $this> */
     public function assignedTasks(): BelongsToMany
     {
@@ -76,6 +82,6 @@ class User extends Authenticatable
 
     public function belongsToTeam(int $teamId): bool
     {
-        return $this->team_id === $teamId;
+        return $this->team_id === $teamId || $this->additionalTeams->contains('id', $teamId);
     }
 }

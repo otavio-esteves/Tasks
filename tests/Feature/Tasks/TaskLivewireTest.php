@@ -96,7 +96,7 @@ class TaskLivewireTest extends TestCase
             ->assertDontSee('Nova equipe')
             ->call('selectSystemTab', 'users')
             ->assertSet('systemTab', 'users')
-            ->assertSee('Cargos dos usuários')
+            ->assertSee('Usuários e equipes')
             ->call('selectSystemTab', 'access')
             ->assertSet('systemTab', 'access')
             ->assertSee('Exigir identificação');

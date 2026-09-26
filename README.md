@@ -72,16 +72,18 @@ Isso significa que:
 ## Perfis e autorização
 
 - `admin`: usuário com `is_admin = true`, concedido explicitamente pelo operador do servidor.
-- `usuário de equipe`: usuário vinculado a uma `team`.
+- `usuário de equipe`: usuário vinculado a uma ou mais equipes.
 - `aguardando acesso`: usuário sem equipe e sem privilégio administrativo.
 
 O cadastro público nunca concede privilégios administrativos nem escolhe uma equipe. O acesso não exige verificação de e-mail; equipe e privilégio administrativo continuam definidos explicitamente. Consulte [o procedimento de segurança](docs/security.md) antes de atualizar instalações existentes.
+
+Administradores gerenciam os vínculos em **Sistema → Usuários**. `users.team_id` guarda a equipe principal, usada como destino inicial após o login; `team_user` guarda as equipes adicionais. Ao remover um vínculo, as atribuições do usuário às tarefas daquela equipe são removidas e registradas no histórico.
 
 Regras atuais:
 
 - admin acessa áreas administrativas e qualquer painel de tarefas;
 - usuário de equipe não acessa área administrativa;
-- usuário de equipe só acessa e manipula tarefas da própria equipe;
+- usuário de equipe só acessa e manipula tarefas das equipes às quais pertence;
 - categoria usada em uma tarefa deve pertencer à mesma equipe.
 - equipes com usuários, categorias ou tarefas ativas não podem ser excluídas;
 - categorias com tarefas ativas não podem ser movidas entre equipes nem excluídas;

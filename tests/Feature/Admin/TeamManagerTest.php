@@ -116,6 +116,22 @@ class TeamManagerTest extends TestCase
         $this->get(route('teams.tasks', $team))->assertOk();
     }
 
+    public function test_team_with_secondary_user_membership_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $primaryTeam = Team::factory()->create();
+        $secondaryTeam = Team::factory()->create();
+        $user = User::factory()->forTeam($primaryTeam)->create();
+        $user->additionalTeams()->attach($secondaryTeam);
+
+        Livewire::actingAs($admin)
+            ->test(TeamManager::class)
+            ->call('delete', $secondaryTeam->id)
+            ->assertSee('A equipe possui usuarios, categorias ou tarefas ativas e nao pode ser removida.');
+
+        $this->assertNotSoftDeleted($secondaryTeam);
+    }
+
     public function test_team_with_active_category_cannot_be_deleted(): void
     {
         $admin = User::factory()->admin()->create();

@@ -46,7 +46,10 @@ class EloquentTeamRepository implements TeamRepository
 
     public function hasActiveDependencies(Team $team): bool
     {
-        return User::query()->where('team_id', $team->id)->exists()
+        return User::query()
+            ->where(fn ($query) => $query->where('team_id', $team->id)
+                ->orWhereHas('additionalTeams', fn ($teams) => $teams->whereKey($team->id)))
+            ->exists()
             || Category::query()->where('team_id', $team->id)->exists()
             || Task::query()->where('team_id', $team->id)->exists();
     }
