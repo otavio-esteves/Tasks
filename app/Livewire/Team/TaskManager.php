@@ -222,6 +222,13 @@ class TaskManager extends Component
         $this->redirect('/', navigate: true);
     }
 
+    public function administratorLogin(Logout $logout): void
+    {
+        $logout();
+
+        $this->redirect(route('login', ['admin' => 1]), navigate: true);
+    }
+
     public function selectSystemTab(string $tab): void
     {
         if (! in_array($tab, ['teams', 'categories', 'users', 'access'], true)) {

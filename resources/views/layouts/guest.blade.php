@@ -13,12 +13,19 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <script>
+            (() => {
+                const loginTheme = localStorage.getItem('theme');
+                document.documentElement.classList.toggle('dark', loginTheme === 'dark' || (loginTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+            })();
+        </script>
+
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="flex min-h-[100dvh] items-center justify-center bg-muted/40 px-3 py-6 text-foreground sm:px-4 sm:py-10">
-            <div class="w-full max-w-sm">
+    <body class="bg-background font-sans text-foreground antialiased">
+        <div class="flex min-h-[100dvh] items-center justify-center bg-background px-3 py-6 sm:px-4 sm:py-10">
+            <div class="w-full {{ request()->routeIs('login') ? 'max-w-[450px]' : 'max-w-sm' }}">
                 <a href="/" wire:navigate class="mb-6 block text-center">
                     <span class="text-xl font-semibold tracking-tight text-foreground">{{ config('app.name') }}</span>
                     <span class="mt-1 block text-sm text-muted-foreground">Gestão de equipes e tarefas</span>

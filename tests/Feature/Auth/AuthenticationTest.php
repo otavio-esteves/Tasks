@@ -18,7 +18,10 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('pages.auth.login');
+            ->assertSeeVolt('pages.auth.login')
+            ->assertSee('aria-label="Tema claro"', false)
+            ->assertSee('aria-label="Tema escuro"', false)
+            ->assertSee('aria-label="Tema do sistema"', false);
     }
 
     public function test_root_route_redirects_guest_users_to_login(): void

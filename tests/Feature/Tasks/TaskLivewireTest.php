@@ -47,6 +47,21 @@ class TaskLivewireTest extends TestCase
             ->assertDontSee('data-testid="admin-system-menu-trigger"', false);
     }
 
+    public function test_team_user_can_open_administrator_login_from_sidebar(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->assertSee('data-testid="administrator-login-trigger"', false)
+            ->call('administratorLogin')
+            ->assertRedirect(route('login', ['admin' => 1]));
+
+        $this->assertGuest();
+        $this->get(route('login', ['admin' => 1]))->assertOk();
+    }
+
     public function test_admin_sidebar_links_all_teams_and_exposes_system_settings(): void
     {
         $currentTeam = Team::factory()->create(['name' => 'Equipe atual']);
@@ -57,6 +72,7 @@ class TaskLivewireTest extends TestCase
             ->get(route('teams.tasks', $currentTeam))
             ->assertOk()
             ->assertSee('data-testid="admin-system-menu-trigger"', false)
+            ->assertDontSee('data-testid="administrator-login-trigger"', false)
             ->assertSee('data-testid="admin-system-settings-dialog"', false)
             ->assertDontSee('x-on:click="systemOpen = !systemOpen"', false)
             ->assertSee('Configurações administrativas')

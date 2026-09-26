@@ -28,6 +28,18 @@
         modalOpen: false, 
         settingsOpen: false,
         settingsTab: 'profile',
+        selectedTheme: ['light', 'dark'].includes(localStorage.getItem('theme')) ? localStorage.getItem('theme') : 'system',
+        setTheme(theme) {
+            this.selectedTheme = theme;
+
+            if (theme === 'system') {
+                localStorage.removeItem('theme');
+            } else {
+                localStorage.setItem('theme', theme);
+            }
+
+            document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+        },
         modalView: 'details', 
         mode: 'create',
         viewMode: localStorage.getItem('taskViewMode') === 'list' ? 'list' : 'grid'
@@ -48,12 +60,7 @@
         enforceCardView();
         mobileView.addEventListener('change', enforceCardView);
         window.addEventListener('popstate', restorePanelView);
-        document.documentElement.classList.add('dark');
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        setTheme(selectedTheme);
      "
      x-on:open-task-modal.window="modalOpen = true; modalView = $event.detail.view || 'details'; mode = $event.detail.mode"
      x-on:task-saved.window="modalOpen = false"
@@ -191,6 +198,18 @@
         </div>
 
         <div class="shrink-0 border-t border-sidebar-border bg-sidebar px-3 py-2">
+            @unless (auth()->user()->isAdmin())
+                <div class="mb-2 border-b border-sidebar-border pb-2">
+                    <h3 class="mb-1 px-2.5 text-[10px] font-medium text-muted-foreground">Acesso</h3>
+                    <nav>
+                        <button type="button" data-testid="administrator-login-trigger" wire:click="administratorLogin"
+                            class="flex w-full items-center gap-3 rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                            <i class="ph-duotone ph-lock-key-open text-base" aria-hidden="true"></i>
+                            <span>Administrador</span>
+                        </button>
+                    </nav>
+                </div>
+            @endunless
             <button x-on:click="settingsOpen = true; sidebarOpen = false"
                 class="group flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent">
                 <div class="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
@@ -424,9 +443,9 @@
                                 <p class="text-sm text-muted-foreground">Personalize como a interface é exibida no seu dispositivo.</p>
                             </div>
                             <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                <button x-on:click="localStorage.theme = 'light'; document.documentElement.classList.remove('dark')"
+                                <button type="button" x-on:click="setTheme('light')" x-bind:aria-pressed="selectedTheme === 'light'"
                                     class="group relative flex flex-col gap-3 rounded-shadcn border bg-white p-3 text-left text-zinc-950 shadow-sm transition-colors hover:bg-zinc-50"
-                                    :class="localStorage.theme === 'light' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
+                                    :class="selectedTheme === 'light' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
                                     <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
                                         <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-white shadow-sm"></div>
                                         <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-white shadow-sm"></div>
@@ -437,9 +456,9 @@
                                     </div>
                                 </button>
 
-                                <button x-on:click="localStorage.theme = 'dark'; document.documentElement.classList.add('dark')"
+                                <button type="button" x-on:click="setTheme('dark')" x-bind:aria-pressed="selectedTheme === 'dark'"
                                     class="group relative flex flex-col gap-3 rounded-shadcn border bg-zinc-950 p-3 text-left text-zinc-50 shadow-sm transition-colors hover:bg-zinc-900"
-                                    :class="localStorage.theme === 'dark' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
+                                    :class="selectedTheme === 'dark' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
                                     <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-zinc-800 bg-zinc-950">
                                         <div class="absolute left-2 right-2 top-2 h-2 rounded-sm bg-zinc-800"></div>
                                         <div class="absolute bottom-2 left-2 top-6 w-6 rounded-sm bg-zinc-800"></div>
@@ -450,9 +469,9 @@
                                     </div>
                                 </button>
 
-                                <button x-on:click="localStorage.removeItem('theme'); if(window.matchMedia('(prefers-color-scheme: dark)').matches) { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); }"
+                                <button type="button" x-on:click="setTheme('system')" x-bind:aria-pressed="selectedTheme === 'system'"
                                     class="group relative flex flex-col gap-3 rounded-shadcn border bg-card p-3 text-left text-card-foreground shadow-sm transition-colors hover:bg-accent/40"
-                                    :class="!('theme' in localStorage) ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
+                                    :class="selectedTheme === 'system' ? 'border-ring ring-2 ring-ring ring-offset-2 ring-offset-background' : 'border-border'">
                                     <div class="relative flex aspect-[4/3] w-full overflow-hidden rounded-md border border-border">
                                         <div class="h-full w-1/2 bg-muted"></div>
                                         <div class="h-full w-1/2 bg-zinc-900"></div>
@@ -816,7 +835,7 @@
     </div>
 
     <header x-show="panelView === 'tasks'"
-        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-2 border-b border-border bg-background px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3 sm:px-6 sm:py-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-2 border-b border-border bg-background px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3 sm:px-6 sm:py-4 2xl:grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)]">
         <div class="flex min-w-0 items-center gap-2 w-full sm:w-auto">
             <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="group flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <i class="ph ph-list text-lg"></i>
@@ -828,7 +847,7 @@
             </div>
         </div>
 
-        <div class="order-3 col-span-full flex h-8 w-full max-w-full items-center justify-self-center overflow-x-auto rounded-md border border-border bg-muted p-0.5 xl:order-none xl:col-auto xl:w-auto">
+        <div class="order-3 col-span-full flex h-8 w-max max-w-full items-center justify-self-center overflow-x-auto rounded-md border border-border bg-muted p-0.5 2xl:order-none 2xl:col-auto 2xl:w-auto">
             <button type="button" wire:click="applyQuickFilter('total')"
                 class="flex h-full items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 transition-colors {{ $quickFilter === 'total' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/60 hover:text-foreground' }}">
                 <i class="ph ph-files text-sm"></i>

@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Application\System\Queries\GetPublicAccessUser;
 use App\Livewire\Admin\SystemAccessManager;
+use App\Livewire\Team\TaskManager;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,7 +64,17 @@ class SystemAccessManagerTest extends TestCase
 
         auth()->logout();
 
-        $this->get('/login?admin=1')->assertOk();
+        $this->get('/')->assertRedirect(route('teams.tasks', $publicUser->team));
+        $this->get(route('teams.tasks', $publicUser->team))
+            ->assertOk()
+            ->assertSee('data-testid="administrator-login-trigger"', false);
+        $this->assertAuthenticatedAs($publicUser);
+
+        Livewire::test(TaskManager::class, ['team' => $publicUser->team])
+            ->call('administratorLogin')
+            ->assertRedirect(route('login', ['admin' => 1]));
+
+        $this->get(route('login', ['admin' => 1]))->assertOk();
         $this->assertGuest();
     }
 }

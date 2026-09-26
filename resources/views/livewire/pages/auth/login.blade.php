@@ -30,7 +30,40 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div data-testid="login-card">
-    <div class="mb-6 space-y-1">
+    <div class="fixed left-3 top-3 z-10 sm:left-6 sm:top-6" x-data="{
+        selectedTheme: ['light', 'dark'].includes(localStorage.getItem('theme')) ? localStorage.getItem('theme') : 'system',
+        setTheme(theme) {
+            this.selectedTheme = theme;
+
+            if (theme === 'system') {
+                localStorage.removeItem('theme');
+            } else {
+                localStorage.setItem('theme', theme);
+            }
+
+            document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+        }
+    }" x-init="setTheme(selectedTheme)">
+        <div role="group" aria-label="Tema" class="inline-flex gap-0.5 rounded-md border border-border bg-card p-0.5 shadow-sm">
+            <button type="button" x-on:click="setTheme('light')" x-bind:aria-pressed="selectedTheme === 'light'" aria-label="Tema claro" title="Tema claro"
+                class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :class="selectedTheme === 'light' ? 'bg-muted text-foreground' : ''">
+                <i class="ph ph-sun text-base" aria-hidden="true"></i>
+            </button>
+            <button type="button" x-on:click="setTheme('dark')" x-bind:aria-pressed="selectedTheme === 'dark'" aria-label="Tema escuro" title="Tema escuro"
+                class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :class="selectedTheme === 'dark' ? 'bg-muted text-foreground' : ''">
+                <i class="ph ph-moon text-base" aria-hidden="true"></i>
+            </button>
+            <button type="button" x-on:click="setTheme('system')" x-bind:aria-pressed="selectedTheme === 'system'" aria-label="Tema do sistema" title="Tema do sistema"
+                class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :class="selectedTheme === 'system' ? 'bg-muted text-foreground' : ''">
+                <i class="ph ph-monitor text-base" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="mb-6 space-y-1 text-center">
         <h1 class="text-xl font-semibold tracking-tight text-foreground">Acessar sua conta</h1>
         <p class="text-sm text-muted-foreground">Informe suas credenciais para continuar.</p>
     </div>
