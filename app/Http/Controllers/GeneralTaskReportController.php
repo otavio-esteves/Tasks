@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Application\Tasks\Queries\GetGeneralTaskReport;
 use App\Application\Users\Queries\ListTeamUsers;
+use App\Domain\Tasks\Exceptions\TaskReportTooLarge;
 use App\Models\Task;
 use App\Models\Team;
 use Illuminate\Http\Request;
@@ -33,13 +34,22 @@ class GeneralTaskReportController extends Controller
             abort(404);
         }
 
-        return view('reports.general', [
-            'team' => $team,
-            'report' => $getGeneralTaskReport->handle($team->id, [
+        try {
+            $report = $getGeneralTaskReport->handle($team->id, [
                 'assignee_id' => $assigneeId,
                 'start_date' => $validated['start_date'] ?? null,
                 'end_date' => $validated['end_date'] ?? null,
-            ]),
+            ]);
+        } catch (TaskReportTooLarge $e) {
+            return response()->view('reports.too-large', [
+                'team' => $team,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return view('reports.general', [
+            'team' => $team,
+            'report' => $report,
             'assignee' => $assigneeId === null ? null : $users->firstWhere('id', $assigneeId),
             'startDate' => $validated['start_date'] ?? null,
             'endDate' => $validated['end_date'] ?? null,

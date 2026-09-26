@@ -5,13 +5,16 @@ namespace App\Infrastructure\Persistence\Eloquent;
 use App\Application\Tasks\Contracts\TaskRepository;
 use App\Application\Tasks\Data\ChecklistItemData;
 use App\Application\Tasks\Data\CreateTaskData;
+use App\Application\Tasks\Data\IndicatorPeriodData;
 use App\Application\Tasks\Data\TaskListResult;
 use App\Application\Tasks\Data\TaskReportResult;
 use App\Application\Tasks\Data\UpdateTaskData;
+use App\Domain\Tasks\Exceptions\TaskReportTooLarge;
 use App\Domain\Tasks\TaskStatus;
 use App\Models\Task;
 use App\Models\TaskChecklist;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 class EloquentTaskRepository implements TaskRepository
@@ -311,8 +314,7 @@ class EloquentTaskRepository implements TaskRepository
         $startDate = $filters['start_date'] ?? null;
         $endDate = $filters['end_date'] ?? null;
 
-        $tasks = Task::query()
-            ->with(['category', 'assignees'])
+        $query = Task::query()
             ->forTeam($teamId)
             ->when($assigneeId, fn ($query) => $query->whereHas('assignees', fn ($assignees) => $assignees->whereKey($assigneeId)))
             ->when($startDate, fn ($query) => $query->where(function ($query) use ($startDate): void {
@@ -320,38 +322,60 @@ class EloquentTaskRepository implements TaskRepository
             }))
             ->when($endDate, fn ($query) => $query->where(function ($query) use ($endDate): void {
                 $query->whereDate('start_date', '<=', $endDate)->orWhereNull('start_date');
-            }))
+            }));
+
+        $totals = (clone $query)->toBase()->selectRaw(
+            'COUNT(*) AS total, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS pending, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS in_progress, '
+            .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS completed, '
+            .'SUM(CASE WHEN is_urgent = true AND status != ? THEN 1 ELSE 0 END) AS urgent, '
+            .'SUM(CASE WHEN due_date < ? AND status != ? THEN 1 ELSE 0 END) AS overdue',
+            [
+                TaskStatus::Pending->value,
+                TaskStatus::InProgress->value,
+                TaskStatus::Completed->value,
+                TaskStatus::Completed->value,
+                Carbon::today()->toDateString(),
+                TaskStatus::Completed->value,
+            ],
+        )->first();
+
+        if ((int) $totals->total > TaskReportTooLarge::MAX_TASKS) {
+            throw new TaskReportTooLarge;
+        }
+
+        $tasks = $query
+            ->with(['category', 'assignees'])
             ->orderByRaw('start_date IS NULL')
             ->orderBy('start_date')
             ->orderByRaw('due_date IS NULL')
             ->orderBy('due_date')
             ->orderByDesc('created_at')
+            ->limit(TaskReportTooLarge::MAX_TASKS + 1)
             ->get();
 
-        $today = Carbon::today();
+        if ($tasks->count() > TaskReportTooLarge::MAX_TASKS) {
+            throw new TaskReportTooLarge;
+        }
 
         return new TaskReportResult($tasks, [
-            'total' => $tasks->count(),
-            'pending' => $tasks->where('status', TaskStatus::Pending)->count(),
-            'in_progress' => $tasks->where('status', TaskStatus::InProgress)->count(),
-            'completed' => $tasks->where('status', TaskStatus::Completed)->count(),
-            'urgent' => $tasks->where('is_urgent', true)->where('status', '!=', TaskStatus::Completed)->count(),
-            'overdue' => $tasks->filter(fn (Task $task): bool => $task->due_date !== null
-                && $task->due_date->isBefore($today)
-                && $task->status !== TaskStatus::Completed)->count(),
+            'total' => (int) $totals->total,
+            'pending' => (int) $totals->pending,
+            'in_progress' => (int) $totals->in_progress,
+            'completed' => (int) $totals->completed,
+            'urgent' => (int) $totals->urgent,
+            'overdue' => (int) $totals->overdue,
         ]);
     }
 
     /** @return list<array{label:string,value:int}> */
     private function periodTaskCounts($query, ?string $startDate, ?string $endDate, string $grouping): array
     {
-        $grouping = in_array($grouping, ['daily', 'weekly', 'monthly', 'yearly'], true) ? $grouping : 'monthly';
-        $start = filled($startDate) ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfYear();
-        $end = filled($endDate) ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfYear();
-
-        if ($end->isBefore($start)) {
-            [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
-        }
+        $period = IndicatorPeriodData::fromInput($startDate, $endDate, $grouping);
+        $start = $period->start;
+        $end = $period->end;
+        $grouping = $period->grouping;
 
         $counts = (clone $query)
             ->whereNotNull('start_date')
@@ -362,10 +386,10 @@ class EloquentTaskRepository implements TaskRepository
             ->countBy();
 
         $cursor = match ($grouping) {
-            'daily' => $start->copy()->startOfDay(),
-            'weekly' => $start->copy()->startOfWeek(),
-            'monthly' => $start->copy()->startOfMonth(),
-            'yearly' => $start->copy()->startOfYear(),
+            'daily' => $start->startOfDay(),
+            'weekly' => $start->startOfWeek(),
+            'monthly' => $start->startOfMonth(),
+            default => $start->startOfYear(),
         };
         $periods = [];
 
@@ -376,7 +400,7 @@ class EloquentTaskRepository implements TaskRepository
                     'daily' => $cursor->format('d/m'),
                     'weekly' => 'Sem. '.$cursor->isoWeek,
                     'monthly' => $cursor->translatedFormat('M/y'),
-                    'yearly' => $cursor->format('Y'),
+                    default => $cursor->format('Y'),
                 },
                 'value' => (int) ($counts[$key] ?? 0),
             ];
@@ -385,14 +409,14 @@ class EloquentTaskRepository implements TaskRepository
                 'daily' => $cursor->addDay(),
                 'weekly' => $cursor->addWeek(),
                 'monthly' => $cursor->addMonth(),
-                'yearly' => $cursor->addYear(),
+                default => $cursor->addYear(),
             };
         }
 
         return $periods;
     }
 
-    private function periodKey(Carbon $date, string $grouping): string
+    private function periodKey(CarbonInterface $date, string $grouping): string
     {
         return match ($grouping) {
             'daily' => $date->format('Y-m-d'),

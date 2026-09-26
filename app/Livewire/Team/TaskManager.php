@@ -8,6 +8,7 @@ use App\Application\Tasks\ChangeTaskStatus;
 use App\Application\Tasks\CreateTask;
 use App\Application\Tasks\Data\CreateTaskAttachmentData;
 use App\Application\Tasks\Data\CreateTaskData;
+use App\Application\Tasks\Data\IndicatorPeriodData;
 use App\Application\Tasks\Data\TaskListResult;
 use App\Application\Tasks\Data\UpdateTaskData;
 use App\Application\Tasks\DeleteTask;
@@ -37,6 +38,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -645,9 +647,18 @@ class TaskManager extends Component
             $filters['quick_filter'] = (string) $this->quickFilter;
         }
 
-        $filters['indicator_start_date'] = $this->indicatorStartDate;
-        $filters['indicator_end_date'] = $this->indicatorEndDate;
-        $filters['indicator_grouping'] = $this->indicatorGrouping;
+        try {
+            IndicatorPeriodData::fromInput($this->indicatorStartDate, $this->indicatorEndDate, $this->indicatorGrouping);
+            $this->resetErrorBag('indicatorPeriod');
+            $filters['indicator_start_date'] = $this->indicatorStartDate;
+            $filters['indicator_end_date'] = $this->indicatorEndDate;
+            $filters['indicator_grouping'] = $this->indicatorGrouping;
+        } catch (InvalidArgumentException $e) {
+            $this->addError('indicatorPeriod', $e->getMessage());
+            $filters['indicator_start_date'] = now()->startOfYear()->format('Y-m-d');
+            $filters['indicator_end_date'] = now()->endOfYear()->format('Y-m-d');
+            $filters['indicator_grouping'] = 'monthly';
+        }
 
         return $filters;
     }

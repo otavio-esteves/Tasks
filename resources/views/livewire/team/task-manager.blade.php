@@ -572,6 +572,9 @@
                         </div>
                     </div>
                 </div>
+                @error('indicatorPeriod')
+                    <p class="mt-2 text-xs text-destructive" role="alert">{{ $message }}</p>
+                @enderror
             </div>
 
             <section class="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Resumo das tarefas">

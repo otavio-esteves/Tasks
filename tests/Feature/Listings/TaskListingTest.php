@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -292,6 +293,60 @@ class TaskListingTest extends TestCase
 
         $this->assertCount(3, $daily->monthlyTasks);
         $this->assertSame(2, $daily->monthlyTasks[0]['value']);
+    }
+
+    public function test_indicator_period_accepts_366_daily_points_and_rejects_larger_ranges(): void
+    {
+        $team = Team::factory()->create();
+
+        $listing = app(ListTasks::class)->handle($team->id, filters: [
+            'indicator_start_date' => '2024-01-01',
+            'indicator_end_date' => '2024-12-31',
+            'indicator_grouping' => 'daily',
+        ]);
+
+        $this->assertCount(366, $listing->monthlyTasks);
+
+        $this->expectException(InvalidArgumentException::class);
+        app(ListTasks::class)->handle($team->id, filters: [
+            'indicator_start_date' => '2024-01-01',
+            'indicator_end_date' => '2025-01-01',
+            'indicator_grouping' => 'daily',
+        ]);
+    }
+
+    public function test_indicator_period_rejects_invalid_dates_and_reverse_ranges(): void
+    {
+        $team = Team::factory()->create();
+
+        foreach ([
+            ['2024-02-30', '2024-03-01'],
+            ['2024-03-02', '2024-03-01'],
+        ] as [$start, $end]) {
+            try {
+                app(ListTasks::class)->handle($team->id, filters: [
+                    'indicator_start_date' => $start,
+                    'indicator_end_date' => $end,
+                    'indicator_grouping' => 'daily',
+                ]);
+                $this->fail('O período inválido foi aceito.');
+            } catch (InvalidArgumentException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
+    public function test_indicator_period_shows_validation_error_in_livewire(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->forTeam($team)->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskManager::class, ['team' => $team])
+            ->set('indicatorStartDate', '2024-01-01')
+            ->set('indicatorEndDate', '2025-01-01')
+            ->set('indicatorGrouping', 'daily')
+            ->assertSee('O período dos indicadores deve ter no máximo 366 pontos');
     }
 
     public function test_changing_urgency_keeps_task_in_its_original_position(): void
