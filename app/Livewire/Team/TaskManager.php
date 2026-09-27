@@ -14,6 +14,7 @@ use App\Application\Tasks\Data\UpdateTaskData;
 use App\Application\Tasks\DeleteTask;
 use App\Application\Tasks\DeleteTaskAttachment;
 use App\Application\Tasks\GetTask;
+use App\Application\Tasks\Queries\ListMyTasks;
 use App\Application\Tasks\Queries\ListTasks;
 use App\Application\Tasks\StoreTaskAttachment;
 use App\Application\Tasks\UpdateTask;
@@ -62,6 +63,9 @@ class TaskManager extends Component
     public string $filterAssigneeId = '';
 
     public string $filterStatus = '';
+
+    /** @var list<string> */
+    public array $myWorkStatuses = [];
 
     public string $filterUrgent = '';
 
@@ -130,6 +134,27 @@ class TaskManager extends Component
     {
         $this->quickFilter = '';
         $this->resetPage();
+    }
+
+    public function toggleMyWorkStatus(string $status): void
+    {
+        if (TaskStatus::tryFrom($status) === null) {
+            return;
+        }
+
+        if (in_array($status, $this->myWorkStatuses, true)) {
+            $this->myWorkStatuses = array_values(array_diff($this->myWorkStatuses, [$status]));
+        } else {
+            $this->myWorkStatuses[] = $status;
+        }
+
+        $this->resetPage('myWorkPage');
+    }
+
+    public function clearMyWorkStatuses(): void
+    {
+        $this->myWorkStatuses = [];
+        $this->resetPage('myWorkPage');
     }
 
     public function updatedIndicatorGrouping(): void
@@ -316,17 +341,51 @@ class TaskManager extends Component
             $task = $getTask->handle($this->team->id, $id);
             $this->authorize('update', $task);
 
-            $statuses = TaskStatus::cases();
-            $currentIndex = array_search($task->status, $statuses, true);
-            $nextStatus = $statuses[((int) $currentIndex + 1) % count($statuses)];
-
-            $changeTaskStatus->handle($this->team->id, auth()->id(), $id, $nextStatus);
+            $changeTaskStatus->handle($this->team->id, auth()->id(), $id, $this->nextTaskStatus($task->status));
             $this->dispatch('task-status-updated');
         } catch (InvalidTaskCategory|InvalidTaskStatusTransition|TaskNotFound $e) {
             $this->flashException($e, 'error');
         } catch (Throwable $e) {
             $this->flashUnexpected($e, 'Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
         }
+    }
+
+    public function cycleMyWorkStatus(
+        int $teamId,
+        int $id,
+        ?GetTask $getTask = null,
+        ?ChangeTaskStatus $changeTaskStatus = null
+    ): void {
+        $getTask = $getTask ?? app(GetTask::class);
+        $changeTaskStatus = $changeTaskStatus ?? app(ChangeTaskStatus::class);
+
+        try {
+            $task = $getTask->handle($teamId, $id);
+        } catch (TaskNotFound $e) {
+            $this->flashException($e, 'error');
+
+            return;
+        }
+
+        $this->authorize('update', $task);
+        abort_unless($task->assignees->contains('id', auth()->id()), 403);
+
+        try {
+            $changeTaskStatus->handle($teamId, auth()->id(), $id, $this->nextTaskStatus($task->status));
+            $this->dispatch('task-status-updated');
+        } catch (InvalidTaskStatusTransition|TaskNotFound $e) {
+            $this->flashException($e, 'error');
+        } catch (Throwable $e) {
+            $this->flashUnexpected($e, 'Nao foi possivel atualizar o status agora. Tente novamente.', 'error');
+        }
+    }
+
+    private function nextTaskStatus(TaskStatus $currentStatus): TaskStatus
+    {
+        $statuses = TaskStatus::cases();
+        $currentIndex = array_search($currentStatus, $statuses, true);
+
+        return $statuses[((int) $currentIndex + 1) % count($statuses)];
     }
 
     public function startInlineEdit(int $id, string $field, ?GetTask $getTask = null): void
@@ -609,15 +668,18 @@ class TaskManager extends Component
         $this->resetPage();
     }
 
-    public function render(ListTasks $listTasks, ListTeamOptions $listTeamOptions, ListTeamUsers $listTeamUsers)
+    public function render(ListTasks $listTasks, ListMyTasks $listMyTasks, ListTeamOptions $listTeamOptions, ListTeamUsers $listTeamUsers)
     {
         $this->authorize('viewAny', [Task::class, $this->team]);
 
         /** @var TaskListResult $listing */
         $listing = $listTasks->handle($this->team->id, $this->search, $this->listFilters(), 15);
+        /** @var User $currentUser */
+        $currentUser = auth()->user();
 
         return view('livewire.team.task-manager', [
             'tasks' => $listing->tasks,
+            'myTasks' => $listMyTasks->handle($currentUser, statuses: $this->myWorkStatuses),
             'summary' => $listing->summary,
             'monthlyTasks' => $listing->monthlyTasks,
             'categories' => $this->team->categories,

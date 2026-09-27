@@ -5,7 +5,7 @@
         panelView: 'tasks',
         indicatorChart: 'pie',
         setPanelView(view) {
-            if (!['tasks', 'indicators', 'reports'].includes(view)) {
+            if (!['tasks', 'my-work', 'indicators', 'reports'].includes(view)) {
                 return;
             }
 
@@ -48,7 +48,7 @@
         const mobileView = window.matchMedia('(max-width: 767px)');
         const restorePanelView = () => {
             const view = new URLSearchParams(window.location.search).get('view');
-            panelView = ['indicators', 'reports'].includes(view) ? view : 'tasks';
+            panelView = ['my-work', 'indicators', 'reports'].includes(view) ? view : 'tasks';
         };
         const enforceCardView = () => {
             if (mobileView.matches) {
@@ -57,6 +57,13 @@
             }
         };
         restorePanelView();
+        const requestedTask = Number(new URLSearchParams(window.location.search).get('task'));
+        if (Number.isSafeInteger(requestedTask) && requestedTask > 0) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('task');
+            window.history.replaceState(window.history.state, '', url);
+            $wire.edit(requestedTask);
+        }
         enforceCardView();
         mobileView.addEventListener('change', enforceCardView);
         window.addEventListener('popstate', restorePanelView);
@@ -112,6 +119,13 @@
             <div>
                 <h3 class="mb-2 px-3 text-[10px] font-medium text-muted-foreground">Geral</h3>
                 <nav class="space-y-0.5">
+                    <button type="button" data-testid="my-work-view-trigger" x-on:click="setPanelView('my-work'); sidebarOpen = false"
+                        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        :class="panelView === 'my-work' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
+                        <i class="ph-duotone ph-user-focus text-lg" aria-hidden="true"></i>
+                        Meu Trabalho
+                    </button>
+
                     <button type="button" x-on:click="setPanelView('tasks'); sidebarOpen = false"
                         class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                         :class="panelView === 'tasks' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'">
@@ -502,6 +516,109 @@
             </main>
         </div>
     </div>
+
+    <header x-show="panelView === 'my-work'" x-cloak
+        class="z-20 flex min-h-[65px] shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-3 sm:px-6">
+        <button x-on:click="sidebarOpen = true" aria-label="Abrir menu lateral" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <i class="ph ph-list text-lg" aria-hidden="true"></i>
+        </button>
+        <span class="min-w-0 truncate font-semibold tracking-tight text-foreground">
+            Meu Trabalho <span class="font-normal text-muted-foreground">/ {{ auth()->user()->name }}</span>
+        </span>
+    </header>
+
+    <main x-show="panelView === 'my-work'" x-cloak class="flex-1 overflow-y-auto bg-muted/40 p-3 sm:p-6 custom-scrollbar">
+        <div class="mx-auto max-w-4xl">
+            <div class="mb-5 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <h1 class="text-xl font-semibold tracking-tight">Minhas tarefas</h1>
+                    <p class="mt-1 text-sm text-muted-foreground">Tarefas atribuídas a você em suas equipes.</p>
+                </div>
+                <span class="text-xs text-muted-foreground">{{ $myTasks->total() }} {{ $myTasks->total() === 1 ? 'tarefa' : 'tarefas' }}</span>
+            </div>
+
+            @php
+                $myWorkStatusLabel = match (count($myWorkStatuses)) {
+                    0 => 'Todos',
+                    1 => collect($statusOptions)->firstWhere('value', $myWorkStatuses[0])?->label() ?? 'Todos',
+                    default => count($myWorkStatuses).' status selecionados',
+                };
+            @endphp
+            <div class="mb-3 w-full sm:w-64">
+                <span id="my-work-status-label" class="mb-1 block text-[11px] font-medium text-foreground">Status</span>
+                <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false"
+                    x-on:keydown.escape.stop="open = false; $refs.trigger.focus()">
+                    <button type="button" x-ref="trigger" x-on:click="open = !open" x-bind:aria-expanded="open"
+                        aria-labelledby="my-work-status-label" aria-controls="my-work-status-options"
+                        data-testid="my-work-status-select"
+                        class="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-3 text-left text-sm shadow-sm outline-none transition-colors hover:bg-accent/50 focus:bg-background focus:ring-2 focus:ring-ring">
+                        <i class="ph ph-clock text-sm text-muted-foreground" aria-hidden="true"></i>
+                        <span class="min-w-0 flex-1 truncate">{{ $myWorkStatusLabel }}</span>
+                        <i class="ph ph-caret-down text-xs text-muted-foreground transition-transform" :class="open ? 'rotate-180' : ''" aria-hidden="true"></i>
+                    </button>
+                    <div id="my-work-status-options" x-show="open" x-cloak x-transition
+                        role="group" aria-label="Filtrar meu trabalho por status; selecione um ou mais"
+                        class="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md custom-scrollbar">
+                        <button type="button" wire:click="clearMyWorkStatuses" aria-pressed="{{ $myWorkStatuses === [] ? 'true' : 'false' }}"
+                            class="flex w-full items-center justify-between rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <span class="truncate text-muted-foreground">Todos</span>
+                            @if ($myWorkStatuses === [])<i class="ph ph-check text-sm" aria-hidden="true"></i>@endif
+                        </button>
+                        @foreach ($statusOptions as $statusOption)
+                            <button type="button" wire:click="toggleMyWorkStatus('{{ $statusOption->value }}')"
+                                aria-pressed="{{ in_array($statusOption->value, $myWorkStatuses, true) ? 'true' : 'false' }}"
+                                class="flex w-full items-center justify-between rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <span class="truncate">{{ $statusOption->label() }}</span>
+                                @if (in_array($statusOption->value, $myWorkStatuses, true))<i class="ph ph-check text-sm" aria-hidden="true"></i>@endif
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <section class="overflow-hidden rounded-md border border-border bg-card" aria-label="Minhas tarefas atribuídas">
+                @forelse ($myTasks as $myTask)
+                    @php
+                        $myTaskStatusClass = match ($myTask->status) {
+                            \App\Domain\Tasks\TaskStatus::Completed => 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+                            \App\Domain\Tasks\TaskStatus::InProgress => 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300',
+                            default => 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                        };
+                    @endphp
+                    <div wire:key="my-work-{{ $myTask->id }}"
+                        class="flex flex-col gap-2 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/50 sm:flex-row sm:items-center sm:justify-between">
+                        <a href="{{ route('teams.tasks', $myTask->team) }}?view=my-work&amp;task={{ $myTask->id }}"
+                            @if ($myTask->team_id === $team->id) x-on:click.prevent="$wire.edit({{ $myTask->id }})" @endif
+                            data-testid="my-work-task-{{ $myTask->id }}" aria-label="Abrir e editar {{ $myTask->title }}"
+                            class="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span class="text-xs font-medium text-muted-foreground">{{ $myTask->code }}</span>
+                                <span class="truncate text-sm font-medium text-foreground">{{ $myTask->title }}</span>
+                            </div>
+                            <p class="mt-1 text-xs text-muted-foreground">{{ $myTask->team->name }}<span aria-hidden="true"> · </span>{{ $myTask->due_date?->format('d/m/Y') ?? 'Sem prazo' }}</p>
+                        </a>
+                        <button type="button" wire:click="cycleMyWorkStatus({{ $myTask->team_id }}, {{ $myTask->id }})"
+                            wire:loading.attr="disabled" wire:target="cycleMyWorkStatus"
+                            data-testid="my-work-status-{{ $myTask->id }}"
+                            aria-label="Avançar status de {{ $myTask->code }}; situação atual: {{ $myTask->status->label() }}"
+                            title="Clique para avançar o status"
+                            class="w-fit shrink-0 self-start rounded-md border px-2 py-1 text-xs font-medium transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:self-auto {{ $myTaskStatusClass }}">
+                            {{ $myTask->status->label() }}
+                        </button>
+                    </div>
+                @empty
+                    <div class="px-4 py-10 text-center">
+                        <i class="ph-duotone ph-check-square text-2xl text-muted-foreground" aria-hidden="true"></i>
+                        <p class="mt-2 text-sm font-medium">{{ $myWorkStatuses === [] ? 'Nenhuma tarefa atribuída a você' : 'Nenhuma tarefa nos status selecionados' }}</p>
+                        <p class="mt-1 text-xs text-muted-foreground">{{ $myWorkStatuses === [] ? 'As tarefas aparecerão aqui quando forem atribuídas.' : 'Selecione outros status para ver suas tarefas.' }}</p>
+                    </div>
+                @endforelse
+            </section>
+            @if ($myTasks->hasPages())
+                <div class="mt-4">{{ $myTasks->links() }}</div>
+            @endif
+        </div>
+    </main>
 
     <header x-show="panelView === 'indicators'" x-cloak
         class="z-20 grid min-h-[65px] shrink-0 grid-cols-1 items-center gap-3 border-b border-border bg-background px-3 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:py-4">

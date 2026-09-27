@@ -13,8 +13,10 @@ use App\Domain\Tasks\Exceptions\TaskReportTooLarge;
 use App\Domain\Tasks\TaskStatus;
 use App\Models\Task;
 use App\Models\TaskChecklist;
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class EloquentTaskRepository implements TaskRepository
@@ -306,6 +308,31 @@ class EloquentTaskRepository implements TaskRepository
             $summary,
             $this->periodTaskCounts($baseQuery, $indicatorStartDate, $indicatorEndDate, $indicatorGrouping),
         );
+    }
+
+    /**
+     * @param  list<string>  $statuses
+     * @return LengthAwarePaginator<int, Task>
+     */
+    public function listAssignedToUser(User $user, int $perPage = 15, array $statuses = []): LengthAwarePaginator
+    {
+        $teamIds = $user->additionalTeams()->pluck('teams.id')->all();
+
+        if ($user->team_id !== null) {
+            $teamIds[] = $user->team_id;
+        }
+
+        return Task::query()
+            ->with('team')
+            ->whereHas('assignees', fn ($query) => $query->whereKey($user->id))
+            ->when(! $user->isAdmin(), fn ($query) => $query->whereIn('team_id', $teamIds))
+            ->when($statuses !== [], fn ($query) => $query->whereIn('status', $statuses))
+            ->orderByRaw('CASE WHEN status = ? THEN 1 ELSE 0 END', [TaskStatus::Completed->value])
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'myWorkPage');
     }
 
     public function reportForTeam(int $teamId, array $filters = []): TaskReportResult
